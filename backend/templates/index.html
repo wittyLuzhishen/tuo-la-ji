@@ -390,6 +390,8 @@
                             <h4 class="mb-0">游戏控制 <small style="color: #6c757d; font-size: 12px;">(可拖动)</small></h4>
                         </div>
                         <div style="padding: 15px;">
+                            <button id="look-cards-btn" class="btn btn-info btn-block mb-2">看牌</button>
+                            <button id="showdown-btn" class="btn btn-warning btn-block mb-2" style="display: none;">开牌</button>
                             <button id="fold-btn" class="btn btn-danger btn-block mb-2">弃牌</button>
                             <button id="call-btn" class="btn btn-primary btn-block mb-2">跟注</button>
                             <button id="raise-btn" class="btn btn-success btn-block mb-2">加注</button>
@@ -514,6 +516,20 @@
 
         // DOM加载完成后执行
         document.addEventListener('DOMContentLoaded', function () {
+            // 看牌按钮点击事件
+            document.getElementById('look-cards-btn').addEventListener('click', function () {
+                if (socket) {
+                    socket.emit('look_at_cards');
+                }
+            });
+
+            // 开牌按钮点击事件
+            document.getElementById('showdown-btn').addEventListener('click', function () {
+                if (socket) {
+                    socket.emit('showdown');
+                }
+            });
+
             // 弃牌按钮点击事件
             document.getElementById('fold-btn').addEventListener('click', function () {
                 if (socket) {
@@ -524,6 +540,29 @@
             // 跟注按钮点击事件
             document.getElementById('call-btn').addEventListener('click', function () {
                 if (socket) {
+                    // 检查玩家是否看牌
+                    let lookedCards = false;
+                    if (room_info && room_info.game_data && room_info.game_data.looked_cards) {
+                        // looked_cards是set类型，需要转换为数组或使用has方法
+                        // 这里我们将其转换为数组以便使用includes方法
+                        const lookedCardsArray = Array.isArray(room_info.game_data.looked_cards) 
+                            ? room_info.game_data.looked_cards 
+                            : Array.from(room_info.game_data.looked_cards || []);
+                        lookedCards = lookedCardsArray.includes(user_id);
+                    }
+                    
+                    // 根据是否看牌显示不同的提示信息
+                    if (lookedCards) {
+                        if (!confirm('您已看牌，跟注金额将是当前底注的2倍。确定要跟注吗？')) {
+                            return;
+                        }
+                    } else {
+                        if (!confirm('您未看牌，跟注金额将是当前底注。确定要跟注吗？')) {
+                            return;
+                        }
+                    }
+                    
+                    // 发送跟注事件，后端会根据玩家是否看牌自动计算跟注金额
                     socket.emit('call');
                 }
             });
@@ -1191,6 +1230,77 @@
                         break;
                     }
                 }
+
+                // 检查是否只剩两个活跃玩家，如果是，显示开牌按钮
+                if (data.active_players_count === 2) {
+                    document.getElementById('showdown-btn').style.display = 'block';
+                    // 添加脉冲动画效果
+                    document.getElementById('showdown-btn').classList.add('showdown-available');
+                } else {
+                    document.getElementById('showdown-btn').style.display = 'none';
+                    // 移除脉冲动画效果
+                    document.getElementById('showdown-btn').classList.remove('showdown-available');
+                }
+            });
+
+            // 接收玩家看牌
+            socket.on('show_cards', function (data) {
+                console.log('玩家看牌', data);
+                if (data.player_id === user_id) {
+                    // 显示自己的手牌
+                    const hand = data.hand;
+                    let handHtml = '<div class="player-hand">';
+                    hand.forEach(card => {
+                        // 确定花色并添加对应的颜色类
+                        let suit = card[0];
+                        let rank = card[1];
+                        let colorClass = '';
+                        
+                        // 红色花色：♥️♦️
+                        if (suit === '♥️' || suit === '♦️') {
+                            colorClass = 'card-red';
+                        } 
+                        // 黑色花色：♠️♣️
+                        else if (suit === '♠️' || suit === '♣️') {
+                            colorClass = 'card-black';
+                        }
+                        
+                        handHtml += `<div class="game-card ${colorClass}">${suit}${rank}</div>`;
+                    });
+                    handHtml += '</div>';
+                    
+                    // 找到当前玩家的座位
+                    for (let i = 0; i < 6; i++) {
+                        if (room_info && room_info.seats[i] === user_id) {
+                            // 使用视觉位置映射
+                            const visualPos = window.seatNum2VisualPosMap[i];
+                            const seat = document.querySelector(`.seat-${visualPos}`);
+                            const playerInfo = seat.querySelector('.player-info');
+                            
+                            if (playerInfo) {
+                                // 移除之前的手牌显示
+                                const oldHand = playerInfo.querySelector('.player-hand');
+                                if (oldHand) {
+                                    oldHand.remove();
+                                }
+                                
+                                // 添加新手牌显示
+                                playerInfo.insertAdjacentHTML('beforeend', handHtml);
+                            }
+                            break;
+                        }
+                    }
+                    
+                    alert('您已查看手牌！后续下注金额将翻倍。');
+                }
+            });
+
+            // 接收玩家看牌通知
+            socket.on('player_looked_cards', function (data) {
+                console.log('玩家看牌通知', data);
+                if (data.player_id !== user_id) {
+                    alert(`${data.player_name} 查看了手牌！`);
+                }
             });
 
             // 接收玩家弃牌
@@ -1205,7 +1315,29 @@
             // 接收玩家跟注
             socket.on('player_called', function (data) {
                 console.log('玩家跟注', data);
-                alert(`${data.player_name} 跟注了 ${data.amount} 金币！`);
+                
+                // 如果是当前玩家跟注，显示更详细的信息
+                if (data.player_id === user_id) {
+                    // 检查玩家是否看牌
+                    let lookedCards = false;
+                    if (room_info && room_info.game_data && room_info.game_data.looked_cards) {
+                        // looked_cards是set类型，需要转换为数组或使用has方法
+                        // 这里我们将其转换为数组以便使用includes方法
+                        const lookedCardsArray = Array.isArray(room_info.game_data.looked_cards) 
+                            ? room_info.game_data.looked_cards 
+                            : Array.from(room_info.game_data.looked_cards || []);
+                        lookedCards = lookedCardsArray.includes(user_id);
+                    }
+                    
+                    // 根据是否看牌显示不同的提示信息
+                    if (lookedCards) {
+                        alert(`您跟注了 ${data.amount} 金币（看牌后下注翻倍）！`);
+                    } else {
+                        alert(`您跟注了 ${data.amount} 金币！`);
+                    }
+                } else {
+                    alert(`${data.player_name} 跟注了 ${data.amount} 金币！`);
+                }
 
                 // 更新底池和玩家下注信息
                 document.getElementById('pot-info').textContent = `当前底池: ${data.pot} 金币`;
@@ -1247,6 +1379,24 @@
                 }
             });
 
+            // 接收无效开牌提示
+            socket.on('invalid_showdown', function (data) {
+                console.log('无效开牌', data);
+                alert(data.message);
+            });
+
+            // 接收玩家请求开牌信息
+            socket.on('player_requested_showdown', function (data) {
+                console.log(`${data.player_name} 请求开牌`);
+                // 可以在这里添加提示信息或动画效果
+            });
+
+            // 接收底池封顶事件
+            socket.on('pot_cap_reached', function (data) {
+                console.log('底池已达到上限', data);
+                alert(`底池已达到上限！当前底池: ${data.current_pot}金币，最大底池: ${data.max_pot}金币。系统将自动开牌！`);
+            });
+
             // 游戏结束时的处理
             socket.on('game_over', function (data) {
                 console.log('游戏结束！胜利者是:', data.winner_name);
@@ -1264,7 +1414,9 @@
                         // 找到该玩家的座位
                         for (let i = 0; i < 6; i++) {
                             if (room_info && room_info.seats[i] === player_id) {
-                                const seat = document.querySelector(`.seat-${i}`);
+                                // 使用视觉位置映射
+                                const visualPos = window.seatNum2VisualPosMap[i];
+                                const seat = document.querySelector(`.seat-${visualPos}`);
                                 const playerInfo = seat.querySelector('.player-info');
 
                                 if (playerInfo) {
@@ -1571,6 +1723,11 @@
                     // 在游戏进行中，显示有人坐的座位
                     if (is_playing) {
                         seat.style.display = 'block';
+                        // 添加status-playing类以确保座位在游戏中显示
+                        seat.classList.add('status-playing');
+                    } else {
+                        // 非游戏状态，移除status-playing类
+                        seat.classList.remove('status-playing');
                     }
                     const player = data.players[playerId];
                     let statusClass = 'status-normal';
@@ -1731,6 +1888,34 @@
                     break;
             }
 
+            // 确保所有有玩家的座位都被标记为status-playing
+            if (data.seated_players) {
+                data.seated_players.forEach(playerId => {
+                    // 找到玩家对应的座位
+                    for (let seatNum = 0; seatNum < 6; seatNum++) {
+                        if (room_info && room_info.seats[seatNum] === playerId) {
+                            const visualPos = window.seatNum2VisualPosMap[seatNum];
+                            const seat = document.querySelector(`.seat-${visualPos}`);
+                            if (seat) {
+                                seat.classList.add('status-playing');
+                            }
+                            break;
+                        }
+                    }
+                });
+            }
+            
+            // 确保没有玩家的座位不显示status-playing类
+            for (let seatNum = 0; seatNum < 6; seatNum++) {
+                if (room_info && !room_info.seats[seatNum]) {
+                    const visualPos = window.seatNum2VisualPosMap[seatNum];
+                    const seat = document.querySelector(`.seat-${visualPos}`);
+                    if (seat) {
+                        seat.classList.remove('status-playing');
+                    }
+                }
+            }
+
             // 强制重新计算座位显示位置
             // 由于玩家数量可能已经变化，我们需要强制重新计算座位位置
             setTimeout(() => {
@@ -1739,22 +1924,40 @@
                 }
             }, 100);
 
-            // 显示当前玩家的手牌
-            // 修复：添加数据存在性检查以防止空指针错误
-            if (data.hands && data.hands[user_id]) {
-                const hand = data.hands[user_id];
-                let handHtml = '<div class="player-hand">';
-                hand.forEach(card => {
-                    handHtml += `<div class="game-card">${card[0]}${card[1]}</div>`;
+            // 显示所有玩家的手牌（牌背）
+            if (data.seated_players) {
+                data.seated_players.forEach(playerId => {
+                    // 找到玩家对应的座位
+                    for (let seatNum = 0; seatNum < 6; seatNum++) {
+                        if (room_info && room_info.seats[seatNum] === playerId) {
+                            // 获取视觉位置
+                            const visualPos = window.seatNum2VisualPosMap[seatNum];
+                            const seat = document.querySelector(`.seat-${visualPos}`);
+                            
+                            if (seat) {
+                                const playerInfo = seat.querySelector('.player-info');
+                                if (playerInfo) {
+                                    // 移除之前的手牌显示
+                                    const oldHand = playerInfo.querySelector('.player-hand');
+                                    if (oldHand) {
+                                        oldHand.remove();
+                                    }
+                                    
+                                    // 显示三张牌背
+                                    let handHtml = '<div class="player-hand">';
+                                    for (let i = 0; i < 3; i++) {
+                                        handHtml += `<div class="game-card card-back">🎴</div>`;
+                                    }
+                                    handHtml += '</div>';
+                                    
+                                    // 添加手牌显示
+                                    playerInfo.insertAdjacentHTML('beforeend', handHtml);
+                                }
+                            }
+                            break;
+                        }
+                    }
                 });
-                handHtml += '</div>';
-
-                // 将手牌添加到当前玩家的座位上
-                const currentSeat = document.querySelector('.current-player-seat');
-                if (currentSeat) {
-                    const playerInfo = currentSeat.querySelector('.player-info');
-                    playerInfo.insertAdjacentHTML('beforeend', handHtml);
-                }
             }
 
             // 显示庄家标识

@@ -70,14 +70,12 @@ body {
 /* 座位布局 - 确保在任何情况下都保持圆形且不重叠 */
 .seat {
     position: relative;
-    border: 2px solid rgba(255, 0, 0, 0.3);
-    /* 调试边框 */
-    width: 90px;
-    height: 90px;
-    min-width: 90px;
-    min-height: 90px;
-    max-width: 90px;
-    max-height: 90px;
+    width: 110px;
+    height: 110px;
+    min-width: 110px;
+    min-height: 110px;
+    max-width: 150px;
+    max-height: 150px;
     background-color: #8b4513;
     border: 2px solid #d2b48c;
     border-radius: 50%;
@@ -92,12 +90,22 @@ body {
     /* 强制宽高比1:1，确保圆形 */
 }
 
-/* 确保座位内容可见 */
+/* 确保座位内容可见且不溢出 */
 .seat-content {
     text-align: center;
     color: #fff;
     z-index: 11; /* 确保内容在座位元素之上 */
     position: relative;
+    width: 90%;
+    height: auto;
+    min-height: 90%;
+    overflow: visible; /* 允许内容完整显示 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2px;
+    line-height: 1.2;
 }
 
 /* 多边形座位布局 - 实现完美的左右和上下对称 */
@@ -110,14 +118,14 @@ body {
     height: 100%;
     overflow: hidden;
     margin: 0;
-    padding: 5px;
-    border: 2px solid blue;
+    padding: 20px; /* 增加内边距，让座位离边缘更远 */
+    border: 2px solid rgba(0, 0, 255, 0.2); /* 淡化蓝色边框 */
     aspect-ratio: 16/10;
     justify-content: center;
     align-content: center;
     position: relative;
     z-index: 1;
-    /* 确保充分填充game-table，只保留5像素距离 */
+    /* 增加内边距让座位更远离边缘 */
 }
 
 /* 牌桌中心内容区域 - 确保不被座位遮挡 */
@@ -168,16 +176,24 @@ body {
     grid-area: 3 / 2;
     justify-self: center;
     align-self: center;
-    transform: translateY(30%);
-    /* 底部中心，与seat-0上下对称 */
+    transform: translateY(10%);
+    /* 底部中心，与seat-0上下对称，向上移动更多更远离边缘 */
 }
 
 .seat-4 {
     grid-area: 3 / 1;
     justify-self: start;
     align-self: center;
-    transform: translate(-30%, 20%);
-    /* 左下角，与seat-1上下对称，与seat-2左右对称 */
+    transform: translate(-30%, 0);
+    /* 左下角，与seat-1上下对称，与seat-2左右对称，进一步向上移动远离边缘 */
+}
+
+.seat-2 {
+    grid-area: 3 / 3;
+    justify-self: end;
+    align-self: center;
+    transform: translate(30%, 0);
+    /* 右下角，与seat-5上下对称，与seat-4左右对称，进一步向上移动远离边缘 */
 }
 
 .seat-5 {
@@ -238,49 +254,7 @@ body {
     }
 }
 
-/* 小屏幕优化 - 确保在小屏幕上座位保持对称性 */
-@media (max-width: 768px) {
-    .table-inner {
-        grid-template-columns: 1fr;
-        gap: clamp(10px, 3vmin, 25px);
-        max-width: 98vw;
-        padding: 0 3vw;
-        margin: 1vh auto;
-        border-width: 1px;
-    }
-
-    .seat-0 {
-        top: 5%;
-        margin-bottom: clamp(10px, 3%, 20px);
-        /* 顶部中心，与seat-3上下对称 */
-    }
-
-    .seat-3 {
-        bottom: 5%;
-        margin-top: clamp(10px, 3%, 20px);
-        /* 底部中心，与seat-0上下对称 */
-    }
-
-    .seat-1,
-    .seat-2 {
-        right: 10%;
-        /* 右侧座位，与左侧座位左右对称 */
-    }
-
-    .seat-4,
-    .seat-5 {
-        left: 10%;
-        /* 左侧座位，与右侧座位左右对称 */
-    }
-
-    /* 小屏幕座位尺寸调整 */
-    .seat {
-        width: 80px;
-        height: 80px;
-        max-width: 80px;
-        max-height: 80px;
-    }
-}
+/* 删除重复的小屏幕媒体查询，使用后面更现代化的CSS Grid布局方案 */
 
 /* 悬停效果 - 统一设置所有座位只放大不移动，防止重叠 */
 .seat:hover {
@@ -729,30 +703,46 @@ body {
 }
 }
 
-/* 座位内容样式 */
-.seat-content {
-    text-align: center;
-    color: #fff;
-}
+/* 座位内容样式 - 使用第96行的完整定义 */
 
 .seat-number {
     font-size: 12px;
     opacity: 0.7;
+    text-align: center;
+    display: block;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .player-info {
     margin-top: 5px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .player-name {
     font-weight: bold;
     font-size: 14px;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
+    word-break: break-word;
+    white-space: normal;
+    max-width: 90px;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+    text-align: center;
 }
 
 .player-coins {
     font-size: 12px;
     margin-bottom: 2px;
+    word-break: keep-all;
+    white-space: nowrap;
+    color: #ffcc00;
+    text-align: center;
 }
 
 /* 当前玩家座位高亮 - 固定在屏幕中下方 */
@@ -871,24 +861,46 @@ body {
 /* 玩家手牌 */
 .player-hand {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     justify-content: center;
-    flex-wrap: wrap;
-    margin-top: 10px;
+    align-items: center;
+    position: absolute;
+    left: -120px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100px;
+    margin: 0;
+    z-index: 10;
 }
 
 .game-card {
     display: inline-block;
-    width: 35px;
-    height: 45px;
+    width: 25px;
+    height: 35px;
     border: 1px solid #ccc;
-    border-radius: 5px;
-    margin: 2px;
+    border-radius: 3px;
+    margin: 1px;
     text-align: center;
-    line-height: 45px;
+    line-height: 35px;
     font-weight: bold;
+    font-size: 12px;
     background-color: white;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* 牌背样式 */
+.card-back {
+    background: linear-gradient(45deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    font-size: 14px;
+    border: 1px solid #0a1929;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-back:hover {
+    transform: translateY(-3px);
+    box-shadow: 2px 5px 8px rgba(0, 0, 0, 0.3);
 }
 
 .card-red {
@@ -1372,8 +1384,8 @@ body {
     }
 
     .seat-3 {
-        bottom: 70px;
-        /* 增加底部中间座位的底部间距 */
+        bottom: 120px;
+        /* 进一步增加底部中间座位的底部间距 */
     }
 
     .seat-1,
@@ -1383,8 +1395,8 @@ body {
 
     .seat-2,
     .seat-4 {
-        bottom: 150px;
-        /* 大幅增加中下座位的底部间距，确保在低分辨率屏幕上能完整显示 */
+        bottom: 200px;
+        /* 大幅增加中下座位的底部间距，确保内容完整显示 */
     }
 
     /* 确保座位不会超出屏幕 */
@@ -1419,8 +1431,8 @@ body {
     }
 
     .seat-3 {
-        bottom: 50px;
-        /* 增加底部间距 */
+        bottom: 100px;
+        /* 进一步增加底部间距 */
     }
 
     .seat-1,
@@ -1430,7 +1442,7 @@ body {
 
     .seat-2,
     .seat-4 {
-        bottom: 120px;
+        bottom: 180px;
         /* 大幅增加中下座位的底部间距 */
     }
 
@@ -1470,8 +1482,8 @@ body {
     }
 
     .seat-3 {
-        bottom: 150px;
-        /* 底部座位，再次大幅上移确保在牌桌范围内 */
+        bottom: 200px;
+        /* 底部座位，大幅上移确保在牌桌范围内 */
     }
 
     .seat-1,
@@ -1482,8 +1494,8 @@ body {
 
     .seat-2,
     .seat-4 {
-        bottom: 160px;
-        /* 下侧边座位，再次大幅上移确保在牌桌范围内 */
+        bottom: 220px;
+        /* 下侧边座位，大幅上移确保在牌桌范围内 */
     }
 
     /* 调整水平位置，确保座位在牌桌范围内 */
@@ -1595,7 +1607,11 @@ body {
     font-weight: bold;
     position: relative;
     z-index: 15;
+    word-break: keep-all;
+    white-space: nowrap;
 }
+
+
 
 /* 玩家当前下注样式 */
 .player-current-bet {
@@ -1796,4 +1812,47 @@ body {
     background-color: rgba(51, 51, 51, 0.8);
     border-radius: 8px;
     border: 1px solid #ff9900;
+}
+
+/* 开牌按钮样式 */
+#showdown-btn {
+    background-color: #ff9900;
+    color: white;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#showdown-btn:hover {
+    background-color: #ff7700;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#showdown-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* 开牌按钮动画效果 */
+@keyframes showdown-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 153, 0, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 153, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 153, 0, 0);
+    }
+}
+
+#showdown-btn.showdown-available {
+    animation: showdown-pulse 2s infinite;
 }

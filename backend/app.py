@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, send_from_directory
 
+from backend.enum_types import BroadcastDataKey, ClientDataKey, ContinueGameDataKey, MessageType, PlayerKey, RoomSettingKey, RoomKey, PlayerStatus, GameStatus, GameDataKey
+
 # -*- coding: utf-8 -*-
 """
 拖拉机纸牌游戏后端服务
@@ -24,16 +26,29 @@ app.config["SECRET_KEY"] = "your-secret-key"  # 应用密钥，用于会话安�
 app.config["DEBUG"] = True  # 调试模式
 app.config["UPLOAD_FOLDER"] = "static/avatars/"  # 头像上传目录
 
+# 初始化SocketIO，指定使用threading作为异步模式
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+
 # 允许的文件扩展名（用于头像上传）
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+DEFAULT_AVATAR = "/static/avatars/default.svg"
+DEFAULT_INITIAL_COINS = 1000  # 默认初始金币数
+DEFAULT_BASE_BET = 1  # 默认底注
+DEFAULT_MAX_BET = 100  # 默认单注封顶金币数
+DEFAULT_MAX_HANDS = 10  # 默认手数封顶数
+DEFAULT_MAX_POT_AMOUNT = 1000  # 默认当局底池最大数额
 
-# 初始化SocketIO，指定使用eventlet作为异步模式
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+
+# 花色和牌面定义
+SUITS = ["♥", "♦", "♣", "♠"]  # 扑克牌花色：红桃、方块、梅花、黑桃
+RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]  # 扑克牌面
+
 
 # 游戏房间数据结构
 """
 room: 存储游戏房间的所有状态信息
-  - players: 字典，存储所有玩家信息，键为玩家ID，值为玩家详细信息
+  - players: 字典，存储所有玩家信息，键为玩家ID，值为玩家详细信息（id, username, coins, status, avatar）
   - max_players: 整数，房间最大人数
   - ready_players: 集合，存储已准备的玩家ID
   - owner: 字符串或None，当前房主的玩家ID
@@ -44,28 +59,115 @@ room: 存储游戏房间的所有状态信息
   - last_winner: 字符串或None，上一局的赢家ID
 """
 room = {
-    "players": {},  # 存储所有玩家
-    "max_players": 6,  # 房间最大人数
-    "ready_players": set(),  # 准备就绪的玩家
-    "owner": None,  # 房主
-    "settings": {
-        "is_235_greater_than_three_of_a_kind": True,  # 235是否大于豹子
-        "initial_coins": 1000,  # 初始金币数
-        "base_bet": 1,  # 底注
-        "max_bet": 100,  # 单注封顶金币数
-        "max_hands": 10,  # 手数封顶数
-        "max_pot_amount": 1000,  # 当局底池最大数额
+    RoomKey.Players.value: {},  # 存储所有玩家
+    RoomKey.MaxPlayers.value: 6,  # 房间最大人数
+    RoomKey.ReadyPlayers.value: set(),  # 准备就绪的玩家
+    RoomKey.Owner.value: None,  # 房主
+    RoomKey.Settings.value: {
+        RoomSettingKey.Is235GreaterThanThreeOfAKind.value: True,  # 235是否大于豹子
+        RoomSettingKey.InitialCoins.value: DEFAULT_INITIAL_COINS,  # 初始金币数
+        RoomSettingKey.BaseBet.value: DEFAULT_BASE_BET,  # 底注
+        RoomSettingKey.MaxBet.value: DEFAULT_MAX_BET,  # 单注封顶金币数
+        RoomSettingKey.MaxHands.value: DEFAULT_MAX_HANDS,  # 手数封顶数
+        RoomSettingKey.MaxPotAmount.value: DEFAULT_MAX_POT_AMOUNT,  # 当局底池最大数额
     },
-    "game_state": "waiting",  # 游戏状态：waiting, ready, playing
-    "seats": [None] * 6,  # 座位信息，None表示空座位
-    "last_seat_time": {},  # 记录每个玩家最后一次坐下的时间
-    "last_winner": None,  # 上一局的赢家ID，用于确定下一局的庄家
+    RoomKey.GameState.value: GameState.Waiting.value,  # 游戏状态：waiting, ready, playing
+    RoomKey.Seats.value: [None] * 6,  # 座位信息，None表示空座位
+    RoomKey.LastSeatTime.value: {},  # 记录每个玩家最后一次坐下的时间
+    RoomKey.LastWinner.value: None,  # 上一局的赢家ID，用于确定下一局的庄家
 }
+# 重置房间状态
+def reset_room():
+    """
+    重置房间的所有状态信息
+    - 清空玩家列表、准备列表和座位信息
+    - 重置房主和游戏状态
+    - 清空坐下时间记录
+    - 清除游戏数据（如果存在）
+    """
+    print("房间为空，重置房间状态")
+    room[RoomKey.Players.value] = {}  # 清空玩家列表
+    room[RoomKey.ReadyPlayers.value] = set()  # 清空准备就绪的玩家
+    room[RoomKey.Owner.value] = None  # 清空房主
+    room[RoomKey.GameState.value] = GameStatus.Waiting.value  # 重置游戏状态
+    room[RoomKey.Seats.value] = [None] * 6  # 清空座位
+    room[RoomKey.LastSeatTime.value] = {}  # 清空坐下时间记录
 
-# 花色和牌面定义
-SUITS = ["♥", "♦", "♣", "♠"]  # 扑克牌花色：红桃、方块、梅花、黑桃
-RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]  # 扑克牌面
+    # 如果存在游戏数据，也清空
+    if RoomKey.GameData.value in room:
+        del room[RoomKey.GameData.value]
 
+
+def broadcast_game_info(message_type:MessageType, message:str=None, primary_data:dict=None, extra_data:dict=None, to_user_id:str=""):
+    """
+    用于广播游戏房间信息给所有玩家或指定玩家
+    
+    :param message_type: 消息类型，用于客户端识别
+    :param message: 可选的消息文本，用于提示或通知
+    :param primary_data: 主要数据，包含房间状态信息
+    :param extra_data: 额外数据，用于补充主要数据
+    :param to_user_id: 可选的目标玩家ID，用于指定仅发送给该玩家
+    """
+    if primary_data is None:
+        primary_data = {
+            RoomKey.Players.value: room[RoomKey.Players.value],
+            RoomKey.Seats.value: room[RoomKey.Seats.value],
+            RoomKey.Owner.value: room[RoomKey.Owner.value],
+            RoomKey.Settings.value: room[RoomKey.Settings.value],
+            RoomKey.ReadyPlayers.value: list(room[RoomKey.ReadyPlayers.value]),# 已经准备好的玩家，非必须的
+        }
+
+    if extra_data is not None:
+        primary_data.update(extra_data)
+
+    data_to_send = primary_data
+    if message is not None:
+        data_to_send = {
+            "message": message,
+            "room_info": primary_data,
+        }  
+
+    return socketio.emit(
+        message_type.value,
+        data_to_send,
+        to=to_user_id,
+    )
+
+
+def broadcast_room_updated_with_player_bets():
+    """
+    广播房间更新信息，包含当前游戏中的玩家下注情况
+
+    参数:
+        room: 房间对象，包含玩家、座位、设置等信息
+
+    功能:
+        - 创建房间更新数据，包含玩家、座位、房主和设置信息
+        - 如果游戏正在进行中，添加玩家下注数据
+        - 广播room_updated事件给所有连接的客户端
+    """
+    # 创建房间更新数据
+    room_update_data = {}
+
+    # 如果游戏正在进行中，添加player_bets数据
+    if (
+        room[RoomKey.GameState.value] == GameStatus.Playing.value
+        and RoomKey.GameData.value in room
+        and GameDataKey.PlayerBets.value in room[RoomKey.GameData.value]
+    ):
+        room_update_data[GameDataKey.PlayerBets.value] = room[RoomKey.GameData.value][GameDataKey.PlayerBets.value]
+
+    # 广播房间更新事件
+    broadcast_game_info(MessageType.RoomUpdated.value, extra_data=room_update_data)
+
+
+def get_player_info(player_id:str) -> dict:
+    """
+    获取玩家信息
+    :param player_id: 玩家ID
+    :return: 玩家信息字典
+    """
+    return room[RoomKey.Players.value].get(player_id, None)
 
 @app.route("/")
 def index():
@@ -80,7 +182,7 @@ def index():
 def handle_connect():
     """
     处理WebSocket连接事件
-    当玩家连接到游戏服务器时触发
+    当玩家连接到游戏服务器（打开页面）时触发
     - 使用request.sid作为唯一用户ID
     - 向新连接的用户发送当前房间状态信息
     """
@@ -89,23 +191,14 @@ def handle_connect():
     print(f"用户 {user_id} 已连接")
 
     # 发送当前房间信息给新用户
-    emit(
-        "room_updated",
-        {
-            "players": room["players"],
-            "seats": room["seats"],
-            "owner": room["owner"],
-            "settings": room["settings"],
-            "ready_players": list(room["ready_players"]),
-        },
-    )
+    broadcast_game_info(MessageType.RoomUpdated)
 
 
 @socketio.on("disconnect")
 def handle_disconnect():
     """
     处理WebSocket断开连接事件
-    当玩家离开游戏服务器时触发
+    当玩家离开游戏服务器（关闭页面）时触发
     - 处理游戏进行中玩家断开的特殊情况
     - 重新选举房主（如果需要）
     - 清理玩家数据
@@ -113,72 +206,66 @@ def handle_disconnect():
     - 处理房间清空情况
     """
     user_id = request.sid
-    print(f"用户 {user_id} 已断开连接")
+    print(f"用户 {get_player_info(user_id)} 已断开连接")
 
+    # 如果用户不在房间中，无需处理
+    if user_id not in room[RoomKey.Players.value]:
+        print(f"用户 {user_id} 不在房间中，无需处理")
+        return
     # 如果用户在房间中，移除该用户
-    if user_id in room["players"]:
-        # 检查游戏是否进行中，如果是，玩家断开连接视为放弃
-        if room["game_state"] == "playing":
-            # 处理玩家放弃逻辑
-            if "game_data" in room and user_id in room["game_data"]["players_in_game"]:
-                room["game_data"]["folded_players"].add(user_id)
+    # 检查游戏是否进行中，如果是，玩家断开连接视为放弃
+    if room[RoomKey.GameState.value] == GameState.Playing.value:
+        # 处理玩家放弃逻辑
+        if GameDataKey.PlayersInGame.value in room and user_id in room[GameDataKey.PlayersInGame.value]:
+            room[GameDataKey.FoldedPlayers.value].add(user_id)
 
-                # 检查是否只剩下一个玩家
-                active_players = [
-                    p
-                    for p in room["game_data"]["players_in_game"]
-                    if p not in room["game_data"]["folded_players"]
-                ]
-                if len(active_players) == 1:
-                    # 结束当前回合，确定胜利者
-                    determine_winner()
+            # 检查是否只剩下一个玩家
+            active_players = [
+                p
+                for p in room[RoomKey.GameData.value][GameDataKey.PlayersInGame.value]
+                if p not in room[RoomKey.GameData.value][GameDataKey.FoldedPlayers.value]
+            ]
+            if len(active_players) == 1:
+                # 结束当前回合，确定胜利者
+                determine_winner()
 
-        # 如果是房主断开连接，重新选举房主
-        if user_id == room["owner"]:
-            # 找出剩下的玩家中坐下时间最早的作为新房主
-            remaining_players = [p for p in room["players"] if p != user_id]
-            if remaining_players:
-                earliest_seat_time = min(
-                    room["last_seat_time"][p] for p in remaining_players
-                )
-                new_owner = [
-                    p
-                    for p in remaining_players
-                    if room["last_seat_time"][p] == earliest_seat_time
-                ][0]
-                room["owner"] = new_owner
+    # 如果是房主断开连接，重新选举房主
+    if user_id == room[RoomKey.Owner.value]:
+        # 找出剩下的玩家中坐下时间最早的作为新房主
+        remaining_players = [p for p in room[RoomKey.Players.value] if p != user_id]
+        if remaining_players:
+            earliest_seat_time = min(
+                room[RoomKey.LastSeatTime.value][p] for p in remaining_players
+            )
+            new_owner = [
+                p
+                for p in remaining_players
+                if room[RoomKey.LastSeatTime.value][p] == earliest_seat_time
+            ][0]
+            room[RoomKey.Owner.value] = new_owner
 
-        # 移除用户的座位
-        for i, seat_user_id in enumerate(room["seats"]):
-            if seat_user_id == user_id:
-                room["seats"][i] = None
-                break
+    # 移除用户的座位
+    for i, seat_user_id in enumerate(room[RoomKey.Seats.value]):
+        if seat_user_id == user_id:
+            room[RoomKey.Seats.value][i] = None
+            break
 
-        # 从准备就绪的玩家中移除
-        if user_id in room["ready_players"]:
-            room["ready_players"].remove(user_id)
+    # 从准备就绪的玩家中移除
+    if user_id in room[RoomKey.ReadyPlayers.value]:
+        room[RoomKey.ReadyPlayers.value].remove(user_id)
 
-        # 从玩家列表中移除
-        if user_id in room["players"]:
-            del room["players"][user_id]
-        if user_id in room["last_seat_time"]:
-            del room["last_seat_time"][user_id]
+    # 从玩家列表中移除
+    if user_id in room[RoomKey.Players.value]:
+        del room[RoomKey.Players.value][user_id]
+    if user_id in room[RoomKey.LastSeatTime.value]:
+        del room[RoomKey.LastSeatTime.value][user_id]
 
-        # 广播房间更新
-        socketio.emit(
-            "room_updated",
-            {
-                "players": room["players"],
-                "seats": room["seats"],
-                "owner": room["owner"],
-                "settings": room["settings"],
-                "ready_players": list(room["ready_players"]),
-            },
-        )
+    # 广播房间更新
+    broadcast_game_info(MessageType.RoomUpdated)
 
-        # 检查房间是否为空，如果为空，重置房间状态
-        if len(room["players"]) == 0:
-            reset_room()
+    # 检查房间是否为空，如果为空，重置房间状态
+    if len(room[RoomKey.Players.value]) == 0:
+        reset_room()
 
 
 @socketio.on("set_username")
@@ -190,45 +277,36 @@ def handle_set_username(data):
     - 广播房间更新信息
     """
     user_id = request.sid
-    username = data["username"]
-
+    username = data[ClientDataKey.Username.value]
+    print(f"用户 {get_player_info(user_id)} 尝试设置用户名 {username}")
     # 检查用户名是否重复
     username_taken = False
-    for player_id, player in room["players"].items():
+    for player_id, player in room[RoomKey.Players.value].items():
         # 排除当前用户（如果用户已经存在）
-        if player_id != user_id and player["username"] == username:
+        if player_id != user_id and player[PlayerKey.Username.value] == username:
             username_taken = True
             break
 
     if username_taken:
         # 发送用户名重复的错误消息给客户端
-        emit("username_error", {"error": "用户名已存在，请选择其他用户名"})
+        broadcast_game_info(MessageType.UserNameError, extra_data={"error": "用户名已存在，请选择其他用户名"})
         return
 
-    # 如果用户ID不存在于players中，则添加
-    if user_id not in room["players"]:
-        room["players"][user_id] = {
-            "id": user_id,
-            "username": username,
-            "coins": room["settings"]["initial_coins"],
-            "status": "spectator",  # 初始状态为观众
-            "avatar": "/static/avatars/default.svg",  # 默认头像
+    # 如果用户ID不存在于players中，则添加新玩家
+    if user_id not in room[RoomKey.Players.value]:
+        room[RoomKey.Players.value][user_id] = {
+            PlayerKey.ID.value: user_id,
+            PlayerKey.Username.value: username,
+            PlayerKey.Coins.value: room[RoomKey.Settings.value][RoomSettingKey.InitialCoins.value],
+            PlayerKey.Status.value: PlayerStatus.Spectator.value,  # 初始状态为观众
+            PlayerKey.Avatar.value: DEFAULT_AVATAR,  # 默认头像
         }
     else:
         # 更新用户名
-        room["players"][user_id]["username"] = username
+        room[RoomKey.Players.value][user_id][PlayerKey.Username.value] = username
 
     # 广播房间更新
-    socketio.emit(
-        "room_updated",
-        {
-            "players": room["players"],
-            "seats": room["seats"],
-            "owner": room["owner"],
-            "settings": room["settings"],
-            "ready_players": list(room["ready_players"]),
-        },
-    )
+    broadcast_game_info(MessageType.RoomUpdated)
 
 
 @socketio.on("sit_down")
@@ -242,38 +320,32 @@ def handle_sit_down(data):
     - 广播房间更新
     """
     user_id = request.sid
-    seat_index = data["seat_index"]
+    seat_index = data[ClientDataKey.SeatIndex.value]
+    print(f"用户 {get_player_info(user_id)} 尝试坐下到座位 {seat_index}")
 
     # 检查座位是否为空
-    if room["seats"][seat_index] is None:
+    if room[RoomKey.Seats.value][seat_index] is None:
         # 如果用户之前已经坐在其他座位上，先离开原座位
-        for i, seat_user_id in enumerate(room["seats"]):
+        for i, seat_user_id in enumerate(room[RoomKey.Seats.value]):
             if seat_user_id == user_id:
-                room["seats"][i] = None
+                room[RoomKey.Seats.value][i] = None
                 break
 
         # 坐下到新座位
-        room["seats"][seat_index] = user_id
-        room["last_seat_time"][user_id] = time.time()
-        room["players"][user_id]["status"] = "playing"
+        room[RoomKey.Seats.value][seat_index] = user_id
+        room[RoomKey.LastSeatTime.value][user_id] = time.time()
+        room[RoomKey.Players.value][user_id][PlayerKey.Status.value] = PlayerStatus.Seated.value
 
         # 检查是否成为新房主
         is_new_owner = False
-        if room["owner"] is None:
-            room["owner"] = user_id
+        if room[RoomKey.Owner.value] is None:
+            room[RoomKey.Owner.value] = user_id
             is_new_owner = True
 
         # 广播房间更新
-        socketio.emit(
-            "room_updated",
-            {
-                "players": room["players"],
-                "seats": room["seats"],
-                "owner": room["owner"],
-                "settings": room["settings"],
-                "is_new_owner": is_new_owner and room["owner"] == user_id,
-                "ready_players": list(room["ready_players"]),
-            },
+        broadcast_game_info(MessageType.RoomUpdated, extra_data={
+                "is_new_owner": is_new_owner and room[RoomKey.Owner.value] == user_id
+            }
         )
 
 
@@ -288,44 +360,36 @@ def handle_stand_up():
     - 广播房间更新
     """
     user_id = request.sid
+    print(f"用户 {get_player_info(user_id)} 尝试站起")
 
     # 检查用户是否坐在某个座位上
-    for i, seat_user_id in enumerate(room["seats"]):
+    for i, seat_user_id in enumerate(room[RoomKey.Seats.value]):
         if seat_user_id == user_id:
-            room["seats"][i] = None
-            room["players"][user_id]["status"] = "spectator"
+            room[RoomKey.Seats.value][i] = None
+            room[RoomKey.Players.value][user_id][PlayerKey.Status.value] = PlayerStatus.Spectator.value
 
             # 如果用户在准备就绪列表中，移除
-            if user_id in room["ready_players"]:
-                room["ready_players"].remove(user_id)
+            if user_id in room[RoomKey.ReadyPlayers.value]:
+                room[RoomKey.ReadyPlayers.value].remove(user_id)
 
             # 如果用户是房主且还有其他玩家，重新选举房主
-            if user_id == room["owner"]:
-                seated_players = [p for p in room["seats"] if p is not None]
+            if user_id == room[RoomKey.Owner.value]:
+                seated_players = [p for p in room[RoomKey.Seats.value] if p is not None]
                 if seated_players:
                     earliest_seat_time = min(
-                        room["last_seat_time"][p] for p in seated_players
+                        room[RoomKey.LastSeatTime.value][p] for p in seated_players
                     )
                     new_owner = [
                         p
                         for p in seated_players
-                        if room["last_seat_time"][p] == earliest_seat_time
+                        if room[RoomKey.LastSeatTime.value][p] == earliest_seat_time
                     ][0]
-                    room["owner"] = new_owner
+                    room[RoomKey.Owner.value] = new_owner
                 else:
-                    room["owner"] = None
+                    room[RoomKey.Owner.value] = None
 
             # 广播房间更新
-            socketio.emit(
-                "room_updated",
-                {
-                    "players": room["players"],
-                    "seats": room["seats"],
-                    "owner": room["owner"],
-                    "settings": room["settings"],
-                    "ready_players": list(room["ready_players"]),
-                },
-            )
+            broadcast_game_info(MessageType.RoomUpdated)
             break
 
 
@@ -338,29 +402,23 @@ def handle_ready():
     - 广播房间更新
     """
     user_id = request.sid
+    print(f"用户 {get_player_info(user_id)} 尝试准备/取消准备")
 
     # 检查用户是否坐在某个座位上
-    is_seated = user_id in room["seats"]
+    is_seated = user_id in room[RoomKey.Seats.value]
 
-    if is_seated:
-        # 如果用户未准备就绪，则设置为准备就绪
-        if user_id not in room["ready_players"]:
-            room["ready_players"].add(user_id)
-        else:
-            # 如果用户已准备就绪，则取消准备
-            room["ready_players"].remove(user_id)
+    if not is_seated:
+        print(f"用户 {get_player_info(user_id)} 尝试准备/取消准备，但未就座")
+        return
+    # 如果用户未准备就绪，则设置为准备就绪
+    if user_id not in room[RoomKey.ReadyPlayers.value]:
+        room[RoomKey.ReadyPlayers.value].add(user_id)
+    else:
+        # 如果用户已准备就绪，则取消准备
+        room[RoomKey.ReadyPlayers.value].remove(user_id)
 
-        # 广播房间更新
-        socketio.emit(
-            "room_updated",
-            {
-                "players": room["players"],
-                "seats": room["seats"],
-                "owner": room["owner"],
-                "settings": room["settings"],
-                "ready_players": list(room["ready_players"]),
-            },
-        )
+    # 广播房间更新
+    broadcast_game_info(MessageType.RoomUpdated)
 
 
 @socketio.on("update_settings")
@@ -374,68 +432,65 @@ def handle_update_settings(data):
     - 通知其他玩家设置变更并取消他们的准备状态
     """
     user_id = request.sid
+    print(f"用户 {get_player_info(user_id)} 尝试更新游戏设置")
 
     # 只有房主可以更新游戏设置
-    if user_id == room["owner"]:
-        # 更新设置
-        # 记录更新了哪些设置
-        updated_settings = []
+    if user_id != room[RoomKey.Owner.value]:
+        print(f"用户 {get_player_info(user_id)} 尝试更新游戏设置，但不是房主")
+        return
 
-        if "is_235_greater_than_three_of_a_kind" in data:
-            room["settings"]["is_235_greater_than_three_of_a_kind"] = data[
-                "is_235_greater_than_three_of_a_kind"
-            ]
-            updated_settings.append("特殊牌型规则")
-        if "initial_coins" in data:
-            room["settings"]["initial_coins"] = data["initial_coins"]
-            updated_settings.append("初始金币数")
-            # 当更改初始金币数时，同时更新所有玩家的金币数
-            for player_id in room["players"]:
-                room["players"][player_id]["coins"] = data["initial_coins"]
-        if "base_bet" in data:
-            room["settings"]["base_bet"] = data["base_bet"]
-            updated_settings.append("底注数量")
-        if "max_bet" in data:
-            room["settings"]["max_bet"] = data["max_bet"] if data["max_bet"] else None
-            updated_settings.append("单注封顶金币数")
-        if "max_hands" in data:
-            room["settings"]["max_hands"] = (
-                data["max_hands"] if data["max_hands"] else None
-            )
-            updated_settings.append("手数封顶数")
-        if "max_pot_amount" in data:
-            room["settings"]["max_pot_amount"] = data["max_pot_amount"]
-            updated_settings.append("当局底池最大数额")
+    # 更新设置
+    # 记录更新了哪些设置
+    updated_settings = []
 
-        # 广播房间更新，包含当前游戏中的玩家下注情况
+    if RoomSettingKey.Is235GreaterThanThreeOfAKind.value in data:
+        room[RoomKey.Settings.value][RoomSettingKey.Is235GreaterThanThreeOfAKind.value] = data[
+            ClientDataKey.Is235GreaterThanThreeOfAKind.value
+        ]
+        updated_settings.append("特殊牌型规则")
+    if RoomSettingKey.InitialCoins.value in data:
+        initial_coins = data[ClientDataKey.InitialCoins.value]
+        room[RoomKey.Settings.value][RoomSettingKey.InitialCoins.value] = initial_coins
+        updated_settings.append("初始金币数")
+        # 当更改初始金币数时，同时更新所有玩家的金币数
+        for player_id in room[RoomKey.Players.value]:
+            room[RoomKey.Players.value][player_id][PlayerKey.Coins.value] = initial_coins
+    if RoomSettingKey.BaseBet.value in data:
+        room[RoomKey.Settings.value][RoomSettingKey.BaseBet.value] = data[ClientDataKey.BaseBet.value]
+        updated_settings.append("底注数量")
+    if RoomSettingKey.MaxBet.value in data:
+        room[RoomKey.Settings.value][RoomSettingKey.MaxBet.value] = (
+            data[ClientDataKey.MaxBet.value] if data[ClientDataKey.MaxBet.value] else DEFAULT_MAX_BET
+        )
+        updated_settings.append("单注封顶金币数")
+    if RoomSettingKey.MaxHands.value in data:
+        room[RoomKey.Settings.value][RoomSettingKey.MaxHands.value] = (
+            data[ClientDataKey.MaxHands.value] if data[ClientDataKey.MaxHands.value] else DEFAULT_MAX_HANDS
+        )
+        updated_settings.append("手数封顶数")
+    if RoomSettingKey.MaxMaxPotAmount.value in data:
+        room[RoomKey.Settings.value][RoomSettingKey.MaxMaxPotAmount.value] = data[ClientDataKey.MaxPotAmount.value]
+        updated_settings.append("当局底池最大数额")
 
-        broadcast_room_updated(room)
+    # 广播房间更新，包含当前游戏中的玩家下注情况
 
-        # 通知所有其他玩家房主更改了设置
-        if updated_settings:
-            message = "已更改：" + "、".join(updated_settings)
-            for player_id in room["players"]:
-                if player_id != user_id:
-                    # 取消玩家的准备状态
-                    if player_id in room["ready_players"]:
-                        room["ready_players"].remove(player_id)
+    broadcast_room_updated_with_player_bets()
 
-                    socketio.emit(
-                        "settings_updated",
-                        {
-                            "message": message,
-                            "room_info": {
-                                "players": room["players"],
-                                "seats": room["seats"],
-                                "owner": room["owner"],
-                                "settings": room["settings"],
-                            },
-                        },
-                        to=player_id,
-                    )
+    # 通知所有其他玩家房主更改了设置
+    if not updated_settings:
+        print(f"用户 {get_player_info(user_id)} 尝试更新游戏设置，但未更改任何设置")
+        return
+    message = "已更改：" + "、".join(updated_settings)
+    for player_id in room[RoomKey.Players.value]:
+        if player_id != user_id:
+            # 取消玩家的准备状态
+            if player_id in room[RoomKey.ReadyPlayers.value]:
+                room[RoomKey.ReadyPlayers.value].remove(player_id)
 
-            # 再次广播房间更新，确保所有玩家看到最新状态
-            broadcast_room_updated(room)
+            broadcast_game_info(MessageType.SettingsUpdated.value, message=message, to_user_id=player_id)
+
+    # 再次广播房间更新，确保所有玩家看到最新状态
+    broadcast_room_updated_with_player_bets()
 
 
 @socketio.on("kick_player")
@@ -448,33 +503,37 @@ def handle_kick_player(data):
     - 广播房间更新通知
     """
     user_id = request.sid
-    player_to_kick = data["player_id"]
+    player_to_kick = data[ClientDataKey.PlayerID.value]
+    print(f"用户 {get_player_info(user_id)} 尝试踢出玩家 {get_player_info(player_to_kick)}")
 
     # 使用全局的room对象
     global room
 
     # 检查用户是否在房间中
-    if user_id not in room["players"]:
+    if user_id not in room[RoomKey.Players.value]:
         return
 
     # 只有房主可以踢人
-    if user_id == room["owner"]:
-        # 检查被踢玩家是否存在
-        if player_to_kick in room["players"]:
-            # 让被踢玩家起身
-            for i, seat_user_id in enumerate(room["seats"]):
-                if seat_user_id == player_to_kick:
-                    room["seats"][i] = None
-                    room["players"][player_to_kick]["status"] = "spectator"
+    if user_id != room[RoomKey.Owner.value]:
+        print(f"用户 {user_id} 尝试踢出玩家 {player_to_kick}，但不是房主")
+        return
 
-                    # 如果用户在准备就绪列表中，移除
-                    if player_to_kick in room["ready_players"]:
-                        room["ready_players"].remove(player_to_kick)
+    # 检查被踢玩家是否存在
+    if player_to_kick in room[RoomKey.Players.value]:
+        # 让被踢玩家起身
+        for i, seat_user_id in enumerate(room[RoomKey.Seats.value]):
+            if seat_user_id == player_to_kick:
+                room[RoomKey.Seats.value][i] = None
+                room[RoomKey.Players.value][player_to_kick][PlayerKey.Status.value] = PlayerStatus.Spectator.value
 
-                    break
+                # 如果用户在准备就绪列表中，移除
+                if player_to_kick in room[RoomKey.ReadyPlayers.value]:
+                    room[RoomKey.ReadyPlayers.value].remove(player_to_kick)
 
-            # 广播房间更新，包含当前游戏中的玩家下注情况
-            broadcast_room_updated(room)
+                break
+
+        # 广播房间更新，包含当前游戏中的玩家下注情况
+        broadcast_room_updated_with_player_bets()
 
 
 @socketio.on("get_room_settings")
@@ -487,54 +546,20 @@ def get_room_settings():
     - 包含详细的日志记录，便于调试
     """
     user_id = request.sid
-    print(f"收到用户 {user_id} 的房间设置请求")
-    print(f'当前房间玩家列表: {list(room["players"].keys())}')
+    print(f"收到用户 {get_player_info(user_id)} 的房间设置请求")
+    print(f'当前房间玩家列表: {list(room[RoomKey.Players.value].keys())}')
     # 检查用户是否在房间中
-    if user_id in room["players"]:
+    if user_id in room[RoomKey.Players.value]:
         print(f"用户 {user_id} 在房间中，发送房间设置")
-        print(f'发送的房间设置数据: {room["settings"]}')
+        print(f'发送的房间设置数据: {room[RoomKey.Settings.value]}')
         # 发送房间设置给请求的玩家
-        result = socketio.emit("room_settings", room["settings"], to=user_id)
+        result = broadcast_game_info(MessageType.RoomSettings.value, primary_data=room[RoomKey.Settings.value], to_user_id=user_id)
         print(f"发送房间设置结果: {result}")
     else:
         print(f"用户 {user_id} 不在房间中，不发送设置")
         # 尝试向客户端发送错误信息
-        result = socketio.emit(
-            "room_settings_error", {"error": "不在房间中"}, to=user_id
-        )
+        result = broadcast_game_info(MessageType.RoomSettingsError.value, {"error": "不在房间中"}, to_user_id=user_id)
         print(f"发送错误信息结果: {result}")
-
-
-def broadcast_room_updated(room):
-    """
-    广播房间更新信息，包含当前游戏中的玩家下注情况
-
-    参数:
-        room: 房间对象，包含玩家、座位、设置等信息
-
-    功能:
-        - 创建房间更新数据，包含玩家、座位、房主和设置信息
-        - 如果游戏正在进行中，添加玩家下注数据
-        - 广播room_updated事件给所有连接的客户端
-    """
-    # 创建房间更新数据
-    room_update_data = {
-        "players": room["players"],
-        "seats": room["seats"],
-        "owner": room["owner"],
-        "settings": room["settings"],
-    }
-
-    # 如果游戏正在进行中，添加player_bets数据
-    if (
-        room.get("game_state") == "playing"
-        and "game_data" in room
-        and "player_bets" in room["game_data"]
-    ):
-        room_update_data["player_bets"] = room["game_data"]["player_bets"]
-
-    # 广播房间更新事件
-    socketio.emit("room_updated", room_update_data)
 
 
 # 允许上传文件的函数
@@ -604,25 +629,18 @@ def set_avatar(data):
     - 广播更新后的玩家信息给所有用户
     """
     user_id = request.sid
-    avatar_url = data["avatar_url"]
+    avatar_url = data[ClientDataKey.AvatarURL.value]
+    print(f"收到用户 {get_player_info(user_id)} 的头像设置请求: {avatar_url}")
 
     # 检查用户是否存在
-    if user_id not in room["players"]:
+    if user_id not in room[RoomKey.Players.value]:
         return
 
     # 更新用户头像
-    room["players"][user_id]["avatar"] = avatar_url
+    room[RoomKey.Players.value][user_id][PlayerKey.Avatar.value] = avatar_url
 
     # 广播更新后的玩家信息
-    socketio.emit(
-        "room_updated",
-        {
-            "players": room["players"],
-            "seats": room["seats"],
-            "owner": room["owner"],
-            "settings": room["settings"],
-        },
-    )
+    broadcast_game_info(MessageType.RoomUpdated)
 
 
 @socketio.on("continue_game")
@@ -637,88 +655,60 @@ def handle_continue_game(data):
     - 广播房间更新通知
     """
     user_id = request.sid
-    continue_playing = data.get("continue", False)
+    continue_playing = data.get(ClientDataKey.Continue.value, False)
+    print(f"收到用户 {get_player_info(user_id)} 的继续游戏选择: {continue_playing}")
 
     # 确保游戏状态为waiting（游戏结束后）
-    if room["game_state"] != "waiting":
+    if room[RoomKey.GameState.value] != GameState.Waiting.value:
         return
 
     # 初始化继续游戏的数据结构
-    if "continue_game_data" not in room:
-        room["continue_game_data"] = {"players_continue": set(), "players_quit": set()}
+    if RoomKey.ContinueGameData.value not in room:
+        room[RoomKey.ContinueGameData.value] = {
+            ContinueGameDataKey.PlayersContinue.value: set(), 
+            ContinueGameDataKey.PlayersQuit.value: set()
+        }
 
     # 如果玩家选择继续，添加到继续列表；否则添加到退出列表
     if continue_playing:
-        room["continue_game_data"]["players_continue"].add(user_id)
+        room[RoomKey.ContinueGameData.value][ContinueGameDataKey.PlayersContinue.value].add(user_id)
     else:
-        room["continue_game_data"]["players_quit"].add(user_id)
+        room[RoomKey.ContinueGameData.value][ContinueGameDataKey.PlayersQuit.value].add(user_id)
         # 让选择退出的玩家起身
-        for i, seat_user_id in enumerate(room["seats"]):
+        for i, seat_user_id in enumerate(room[RoomKey.Seats.value]):
             if seat_user_id == user_id:
-                room["seats"][i] = None
-                room["players"][user_id]["status"] = "spectator"
+                room[RoomKey.Seats.value][i] = None
+                room[RoomKey.Players.value][user_id][PlayerKey.Status.value] = PlayerStatus.Spectator.value
                 break
 
     # 检查是否所有玩家都已做出选择
     all_players = [
-        p for p in room["seats"] if p is not None
+        p for p in room[RoomKey.Seats.value] if p is not None
     ]  # 获取所有坐在座位上的玩家
-    if len(room["continue_game_data"]["players_continue"]) + len(
-        room["continue_game_data"]["players_quit"]
+    if len(room[RoomKey.ContinueGameData.value][ContinueGameDataKey.PlayersContinue.value]) + len(
+        room[RoomKey.ContinueGameData.value][ContinueGameDataKey.PlayersQuit.value]
     ) == len(all_players):
         # 检查是否有足够的玩家继续游戏
-        if len(room["continue_game_data"]["players_continue"]) >= 2:
+        if len(room[RoomKey.ContinueGameData.value][ContinueGameDataKey.PlayersContinue.value]) >= 2:
             # 重置准备状态，让继续游戏的玩家重新准备
-            room["ready_players"] = set()
+            room[RoomKey.ReadyPlayers.value] = set()
 
             # 广播继续游戏的信息
-            socketio.emit(
-                "continue_game_ready",
-                {
-                    "players_continue": list(
-                        room["continue_game_data"]["players_continue"]
+            broadcast_game_info(MessageType.ContinueGameReady, primary_data={
+                    ContinueGameDataKey.PlayersContinue.value: list(
+                        room[RoomKey.ContinueGameData.value][ContinueGameDataKey.PlayersContinue.value]
                     )
-                },
+                }
             )
         else:
             # 玩家不足，游戏结束
-            socketio.emit("game_ended", {"reason": "玩家不足"})
+            broadcast_game_info(MessageType.GameEnded, primary_data={"reason": "玩家不足"})
 
         # 清除继续游戏数据
-        del room["continue_game_data"]
+        del room[RoomKey.ContinueGameData.value]
 
     # 广播房间更新
-    socketio.emit(
-        "room_updated",
-        {
-            "players": room["players"],
-            "seats": room["seats"],
-            "owner": room["owner"],
-            "settings": room["settings"],
-        },
-    )
-
-
-# 重置房间状态
-def reset_room():
-    """
-    重置房间的所有状态信息
-    - 清空玩家列表、准备列表和座位信息
-    - 重置房主和游戏状态
-    - 清空坐下时间记录
-    - 清除游戏数据（如果存在）
-    """
-    print("房间为空，重置房间状态")
-    room["players"] = {}  # 清空玩家列表
-    room["ready_players"] = set()  # 清空准备就绪的玩家
-    room["owner"] = None  # 清空房主
-    room["game_state"] = "waiting"  # 重置游戏状态
-    room["seats"] = [None] * 6  # 清空座位
-    room["last_seat_time"] = {}  # 清空坐下时间记录
-
-    # 如果存在游戏数据，也清空
-    if "game_data" in room:
-        del room["game_data"]
+    broadcast_game_info(MessageType.RoomUpdated)
 
 
 # 结束游戏并确定胜利者
@@ -733,70 +723,59 @@ def determine_winner():
     - 更新游戏状态和记录
     - 广播游戏结束信息和胜利者信息
     """
-    if "game_data" not in room:
+    if RoomKey.GameData.value not in room:
         return
 
-    game_data = room["game_data"]
+    game_data = room[RoomKey.GameData.value]
     active_players = [
-        p for p in game_data["players_in_game"] if p not in game_data["folded_players"]
+        p for p in game_data[GameDataKey.PlayersInGame.value] if p not in game_data[GameDataKey.FoldedPlayers.value]
     ]
 
     # 如果只剩一个玩家，直接胜利
     if len(active_players) == 1:
         winner = active_players[0]
-        room["players"][winner]["coins"] += game_data["pot"]
+        room[RoomKey.Players.value][winner][PlayerKey.Coins.value] += game_data[GameDataKey.Pot.value]
     else:
         # 比较所有活跃玩家的手牌，确定胜利者
-        best_hand = None
         winner = None
 
         # 准备所有手牌用于比较
-        all_hands = [game_data["hands"][player_id] for player_id in active_players]
+        all_hands = [game_data[GameDataKey.Hands.value][player_id] for player_id in active_players]
 
         # 使用compare_hands函数比较所有手牌
         winner_index = compare_hands(*all_hands)
         winner = active_players[winner_index]
 
         # 增加胜利者的金币
-        room["players"][winner]["coins"] += game_data["pot"]
+        room[RoomKey.Players.value][winner][PlayerKey.Coins.value] += game_data[GameDataKey.Pot.value]
 
     # 准备所有玩家的手牌信息用于广播
     all_player_hands = {}
-    for player_id in game_data["players_in_game"]:
+    for player_id in game_data[GameDataKey.PlayersInGame.value]:
         all_player_hands[player_id] = {
-            "hand": game_data["hands"][player_id],
-            "username": room["players"][player_id]["username"],
-            "is_folded": player_id in game_data["folded_players"],
+            "hand": game_data[GameDataKey.Hands.value][player_id],
+            PlayerKey.Username.value: room[RoomKey.Players.value][player_id][PlayerKey.Username.value],
+            "is_folded": player_id in game_data[GameDataKey.FoldedPlayers.value],
         }
 
     # 记录上一局的赢家
-    room["last_winner"] = winner
+    room[RoomKey.LastWinner.value] = winner
 
     # 广播游戏结束、胜利者和所有玩家的手牌信息
-    socketio.emit(
-        "game_over",
-        {
+    broadcast_game_info(MessageType.GameOver, primary_data={
             "winner": winner,
-            "winner_name": room["players"][winner]["username"],
-            "pot": game_data["pot"],
+            "winner_name": room[RoomKey.Players.value][winner][PlayerKey.Username.value],
+            "pot": game_data[GameDataKey.Pot.value],
             "all_hands": all_player_hands,
-        },
+        }
     )
 
     # 重置游戏状态，准备下一局
-    room["game_state"] = "waiting"
-    room["ready_players"] = set()
+    room[RoomKey.GameState.value] = GameStatus.Waiting.value
+    room[RoomKey.ReadyPlayers.value] = set()
 
     # 广播房间更新
-    socketio.emit(
-        "room_updated",
-        {
-            "players": room["players"],
-            "seats": room["seats"],
-            "owner": room["owner"],
-            "settings": room["settings"],
-        },
-    )
+    broadcast_game_info(MessageType.RoomUpdated)
 
 
 @socketio.on("start_game")
@@ -815,28 +794,29 @@ def handle_start_game():
     - 开始第一个玩家的回合
     """
     user_id = request.sid
-
+    print(f"用户 {get_player_info(user_id)} 尝试开始游戏")
     # 只有房主可以开始游戏
-    if user_id != room["owner"]:
+    if user_id != room[RoomKey.Owner.value]:
         return
     # 检查所有坐下的玩家是否都已准备就绪
-    seated_players = [p for p in room["seats"] if p is not None]
-    all_ready = all(p in room["ready_players"] for p in seated_players)
+    seated_players = [p for p in room[RoomKey.Seats.value] if p is not None]
+    all_ready = all(p in room[RoomKey.ReadyPlayers.value] for p in seated_players)
 
     if all_ready and len(seated_players) >= 2:
         # 开始游戏
-        room["game_state"] = "playing"
+        room[RoomKey.GameState.value] = GameStatus.Playing.value
 
-        # 确定庄家
+        # 确定庄家banker
         # 如果是第一局，随机选择一个玩家作为庄家
-        # 否则，使用上一局的赢家作为庄家
-        if room["last_winner"] is None or room["last_winner"] not in seated_players:
-            banker = random.choice(seated_players)
+        # 否则，使用一局的赢家作为庄家
+        banker_user_id = None # 本局庄家ID
+        if room[RoomKey.LastWinner.value] is None or room[RoomKey.LastWinner.value] not in seated_players:
+            banker_user_id = random.choice(seated_players)
         else:
-            banker = room["last_winner"]
+            banker_user_id = room[RoomKey.LastWinner.value]
 
         # 调整座位顺序，让庄家位于第一个位置
-        banker_index = seated_players.index(banker)
+        banker_index = seated_players.index(banker_user_id)
         ordered_players = seated_players[banker_index:] + seated_players[:banker_index]
 
         # 洗牌并发牌
@@ -848,48 +828,117 @@ def handle_start_game():
         for player_id in ordered_players:
             hands[player_id] = [deck.pop() for _ in range(3)]
 
+        base_bet = room[RoomKey.Settings.value][RoomSettingKey.BaseBet.value]
         # 创建游戏数据
-        room["game_data"] = {
-            "players_in_game": ordered_players,
-            "hands": hands,
-            "pot": 0,
-            "current_bet": 0,
-            "folded_players": set(),
-            "current_turn": 0,  # 从庄家开始游戏
-            "player_bets": {
+        room[RoomKey.GameData.value] = {
+            GameDataKey.PlayersInGame.value: ordered_players,
+            GameDataKey.Hands.value: hands,
+            GameDataKey.Pot.value: 0,  # 本局底池金额
+            GameDataKey.CurrentBet.value: base_bet,
+            GameDataKey.FoldedPlayers.value: set(),
+            GameDataKey.CurrentTurn.value: 0,  # 从庄家开始游戏
+            GameDataKey.PlayerBets.value: {
                 player_id: 0 for player_id in ordered_players
             },  # 记录每个玩家的下注金额
+            GameDataKey.LookedCards.value: set(),  # 记录已看牌的玩家
         }
 
         # 扣除所有玩家的底注
-        base_bet = room["settings"]["base_bet"]
-        game_data = room["game_data"]
+        game_data = room[RoomKey.GameData.value]
 
         for player_id in ordered_players:
-            # 扣除玩家金币并增加到底池
-            room["players"][player_id]["coins"] -= base_bet
-            game_data["pot"] += base_bet
-            game_data["player_bets"][player_id] = base_bet
+            # 扣减玩家的金币
+            room[RoomKey.Players.value][player_id][PlayerKey.Coins.value] -= base_bet
+            # 增加底注到底池
+            game_data[GameDataKey.Pot.value] += base_bet
+            # 记录玩家已经投入的底注
+            game_data[GameDataKey.PlayerBets.value][player_id] = base_bet
 
         # 设置当前下注金额为底注
-        game_data["current_bet"] = base_bet
+        game_data[GameDataKey.CurrentBet.value] = base_bet
 
         # 广播游戏开始，包含庄家信息
-        socketio.emit(
-            "game_start",
-            {
-                "hands": hands,
-                "seated_players": ordered_players,
-                "current_turn": 0,
-                "pot": 0,
-                "current_bet": 0,
-                "banker": banker,  # 庄家ID
-                "banker_name": room["players"][banker]["username"],  # 庄家名称
-            },
+        broadcast_game_info(MessageType.GameStart, primary_data={
+                GameDataKey.Hands.value: hands,
+                GameDataKey.SeatedPlayers.value: ordered_players,
+                GameDataKey.CurrentTurn.value: 0,
+                GameDataKey.Pot.value: 0,
+                GameDataKey.CurrentBet.value: base_bet,
+                GameDataKey.Banker.value: banker_user_id,  # 本局庄家ID
+                GameDataKey.BankerName.value: room[RoomKey.Players.value][banker_user_id][PlayerKey.Username.value],  # 本局庄家名称
+                GameDataKey.LookedCards.value: [],  # 初始时没有玩家看牌
+            }
         )
 
         # 开始第一个玩家的回合（庄家）
         start_player_turn(ordered_players[0])
+
+
+# 开始玩家的回合
+def start_player_turn(player_id):
+    """
+    开始指定玩家的回合
+    - 广播当前回合信息给所有用户
+    - 包含玩家ID和用户名
+    - 包含当前活跃玩家数量
+    """
+    # 计算活跃玩家数量
+    game_data = room[RoomKey.GameData.value]
+    # 本局还没有弃牌的玩家
+    active_players = [
+        p
+        for p in game_data[GameDataKey.PlayersInGame.value]
+        if p not in game_data[GameDataKey.FoldedPlayers.value]
+    ]
+    
+    # 广播当前回合信息
+    broadcast_game_info(MessageType.StartTurn, primary_data={
+            GameDataKey.PlayerID.value: player_id, 
+            GameDataKey.PlayerName.value: room[RoomKey.Players.value][player_id][PlayerKey.Username.value],
+            GameDataKey.ActivePlayersCount.value: len(active_players)
+        }
+    )
+
+
+@socketio.on("look_at_cards")
+def handle_look_at_cards():
+    """
+    处理玩家看牌事件
+    - 验证游戏状态和玩家是否在游戏中
+    - 将玩家添加到已看牌列表
+    - 发送玩家的手牌信息给该玩家
+    """
+    user_id = request.sid
+    print(f"玩家 {get_player_info(user_id)} 请求看牌")
+
+    # 检查游戏是否在进行中且玩家在游戏中
+    if (
+        room[RoomKey.GameState.value] == GameStatus.Playing.value
+        and RoomKey.GameData.value in room
+        and user_id in room[RoomKey.GameData.value][GameDataKey.PlayersInGame.value]
+    ):
+        game_data = room[RoomKey.GameData.value]
+        
+        # 将玩家添加到已看牌列表
+        game_data[GameDataKey.LookedCards.value].add(user_id)
+        
+        # 发送玩家的手牌信息给该玩家
+        broadcast_game_info(
+            MessageType.ShowCards,
+            primary_data={
+                BroadcastDataKey.Hand.value: game_data[GameDataKey.Hands.value][user_id],
+                BroadcastDataKey.PlayerID.value: user_id,
+            },
+            to_user_id=user_id
+        )
+        # 广播玩家已看牌信息（不包含手牌内容）
+        broadcast_game_info(
+            MessageType.PlayerLookedCards,
+            primary_data={
+                BroadcastDataKey.PlayerID.value: user_id,
+                BroadcastDataKey.PlayerName.value: room[RoomKey.Players.value][user_id][PlayerKey.Username.value],
+            }
+        )
 
 
 @socketio.on("fold")
@@ -907,30 +956,30 @@ def handle_fold():
 
     # 检查游戏是否在进行中且玩家在游戏中
     if (
-        room["game_state"] == "playing"
-        and "game_data" in room
-        and user_id in room["game_data"]["players_in_game"]
+        room[RoomKey.GameState.value] == GameStatus.Playing.value
+        and RoomKey.GameData.value in room
+        and user_id in room[RoomKey.GameData.value][GameDataKey.PlayersInGame.value]
     ):
-        game_data = room["game_data"]
+        game_data = room[RoomKey.GameData.value]
 
         # 检查是否是该玩家的回合
-        if user_id != game_data["players_in_game"][game_data["current_turn"]]:
+        if user_id != game_data[GameDataKey.PlayersInGame.value][game_data["current_turn"]]:
             return
 
         # 将玩家添加到弃牌列表
-        game_data["folded_players"].add(user_id)
+        game_data[GameDataKey.FoldedPlayers.value].add(user_id)
 
         # 广播弃牌信息
         socketio.emit(
             "player_folded",
-            {"player_id": user_id, "player_name": room["players"][user_id]["username"]},
+            {"player_id": user_id, "player_name": room[RoomKey.Players.value][user_id][PlayerKey.Username.value]},
         )
 
         # 检查是否只剩一个玩家
         active_players = [
             p
-            for p in game_data["players_in_game"]
-            if p not in game_data["folded_players"]
+            for p in game_data[GameDataKey.PlayersInGame.value]
+            if p not in game_data[GameDataKey.FoldedPlayers.value]
         ]
         if len(active_players) == 1:
             # 只剩一个玩家，确定胜利者
@@ -958,51 +1007,55 @@ def handle_call():
 
     # 检查游戏是否在进行中且玩家在游戏中
     if (
-        room["game_state"] == "playing"
-        and "game_data" in room
-        and user_id in room["game_data"]["players_in_game"]
+        room[RoomKey.GameState.value] == GameStatus.Playing.value
+        and RoomKey.GameData.value in room
+        and user_id in room[RoomKey.GameData.value][GameDataKey.PlayersInGame.value]
     ):
-        game_data = room["game_data"]
+        game_data = room[RoomKey.GameData.value]
 
         # 检查是否是该玩家的回合
-        if user_id != game_data["players_in_game"][game_data["current_turn"]]:
+        if user_id != game_data[GameDataKey.PlayersInGame.value][game_data["current_turn"]]:
             return
 
         # 计算需要跟注的金额
-        call_amount = game_data["current_bet"] - game_data["player_bets"].get(
+        call_amount = game_data["current_bet"] - game_data[GameDataKey.PlayerBets.value].get(
             user_id, 0
         )
+        
+        # 如果玩家已看牌，下注金额需要翻倍
+        if user_id in game_data[GameDataKey.LookedCards.value]:
+            call_amount *= 2
 
         # 检查玩家是否有足够的金币
-        if room["players"][user_id]["coins"] < call_amount:
+        if room[RoomKey.Players.value][user_id][PlayerKey.Coins.value] < call_amount:
             # 金币不足，无法跟注
             socketio.emit("not_enough_coins", {"player_id": user_id})
             return
 
         # 扣除玩家金币并增加到底池
-        room["players"][user_id]["coins"] -= call_amount
+        room[RoomKey.Players.value][user_id][PlayerKey.Coins.value] -= call_amount
         game_data["pot"] += call_amount
-        game_data["player_bets"][user_id] = game_data["current_bet"]
+        game_data[GameDataKey.PlayerBets.value][user_id] = game_data["current_bet"]
 
         # 广播跟注信息
         socketio.emit(
             "player_called",
             {
                 "player_id": user_id,
-                "player_name": room["players"][user_id]["username"],
+                "player_name": room[RoomKey.Players.value][user_id][PlayerKey.Username.value],
                 "amount": call_amount,
                 "pot": game_data["pot"],
-                "player_bets": game_data["player_bets"],
+                GameDataKey.PlayerBets.value: game_data[GameDataKey.PlayerBets.value],
             },
         )
 
         # 检查是否达到底池最大数额
-        if game_data["pot"] >= room["settings"]["max_pot_amount"]:
+        if game_data["pot"] >= room[RoomKey.Settings.value][RoomSettingKey.MaxMaxPotAmount.value]:
             # 触发封顶，自动开牌
             socketio.emit(
                 "pot_cap_reached",
                 {
-                    "max_pot": room["settings"]["max_pot_amount"],
+                    "max_pot": room[RoomKey.Settings.value][RoomSettingKey.MaxMaxPotAmount.value],
                     "current_pot": game_data["pot"],
                 },
             )
@@ -1033,63 +1086,67 @@ def handle_raise(data):
 
     # 检查游戏是否在进行中且玩家在游戏中
     if (
-        room["game_state"] == "playing"
-        and "game_data" in room
-        and user_id in room["game_data"]["players_in_game"]
+        room[RoomKey.GameState.value] == GameStatus.Playing.value
+        and RoomKey.GameData.value in room
+        and user_id in room[RoomKey.GameData.value][GameDataKey.PlayersInGame.value]
     ):
-        game_data = room["game_data"]
+        game_data = room[RoomKey.GameData.value]
 
         # 检查是否是该玩家的回合
-        if user_id != game_data["players_in_game"][game_data["current_turn"]]:
+        if user_id != game_data[GameDataKey.PlayersInGame.value][game_data["current_turn"]]:
             return
 
         # 检查加注金额是否有效
-        min_raise = game_data["current_bet"] - game_data["player_bets"].get(user_id, 0)
+        min_raise = game_data["current_bet"] - game_data[GameDataKey.PlayerBets.value].get(user_id, 0)
         if raise_amount < min_raise:
             socketio.emit(
                 "invalid_raise", {"player_id": user_id, "min_raise": min_raise}
             )
             return
+        
+        # 如果玩家已看牌，加注金额需要翻倍
+        if user_id in game_data[GameDataKey.LookedCards.value]:
+            raise_amount *= 2
 
         # 检查是否超过最大下注限制
-        if room["settings"]["max_bet"] and raise_amount > room["settings"]["max_bet"]:
+        if room[RoomKey.Settings.value][RoomSettingKey.MaxBet.value] and raise_amount > room[RoomKey.Settings.value][RoomSettingKey.MaxBet.value]:
             socketio.emit(
                 "exceed_max_bet",
-                {"player_id": user_id, "max_bet": room["settings"]["max_bet"]},
+                {"player_id": user_id, RoomSettingKey.MaxBet.value: room[RoomKey.Settings.value][RoomSettingKey.MaxBet.value]},
             )
             return
 
         # 检查玩家是否有足够的金币
-        if room["players"][user_id]["coins"] < raise_amount:
+        if room[RoomKey.Players.value][user_id][PlayerKey.Coins.value] < raise_amount:
             socketio.emit("not_enough_coins", {"player_id": user_id})
             return
 
         # 扣除玩家金币并增加到底池
-        room["players"][user_id]["coins"] -= raise_amount
+        room[RoomKey.Players.value][user_id][PlayerKey.Coins.value] -= raise_amount
         game_data["pot"] += raise_amount
-        game_data["player_bets"][user_id] = game_data["current_bet"] + raise_amount
-        game_data["current_bet"] = game_data["player_bets"][user_id]
+        game_data[GameDataKey.PlayerBets.value][user_id] = game_data["current_bet"] + raise_amount
+        game_data["current_bet"] = game_data[GameDataKey.PlayerBets.value][user_id]
 
         # 广播加注信息
         socketio.emit(
             "player_raised",
             {
                 "player_id": user_id,
-                "player_name": room["players"][user_id]["username"],
+                "player_name": room[RoomKey.Players.value][user_id][PlayerKey.Username.value],
                 "amount": raise_amount,
                 "pot": game_data["pot"],
                 "current_bet": game_data["current_bet"],
-                "player_bets": game_data["player_bets"],
+                GameDataKey.PlayerBets.value: game_data[GameDataKey.PlayerBets.value],
             },
         )
 
         # 检查是否达到底池最大数额
-        if game_data["pot"] >= room["settings"]["max_pot_amount"]:
+        if game_data["pot"] >= room[RoomKey.Settings.value][RoomSettingKey.MaxMaxPotAmount.value]:
             # 触发封顶，自动开牌
             socketio.emit(
                 "pot_cap_reached",
                 {
-                    "max_pot": room["settings"]["max_pot_amount"],
+                    "max_pot": room[RoomKey.Settings.value][RoomSettingKey.MaxMaxPotAmount.value],
                     "current_pot": game_data["pot"],
                 },
             )
@@ -1100,18 +1157,50 @@ def handle_raise(data):
         next_turn()
 
 
-# 开始玩家的回合
-def start_player_turn(player_id):
+@socketio.on("showdown")
+def handle_showdown():
     """
-    开始指定玩家的回合
-    - 广播当前回合信息给所有用户
-    - 包含玩家ID和用户名
+    处理玩家开牌事件
+    - 验证游戏状态和玩家是否在游戏中
+    - 检查是否只剩两个活跃玩家
+    - 检查是否是该玩家的回合
+    - 执行开牌操作，调用determine_winner函数
     """
-    # 广播当前回合信息
-    socketio.emit(
-        "start_turn",
-        {"player_id": player_id, "player_name": room["players"][player_id]["username"]},
-    )
+    user_id = request.sid
+
+    # 检查游戏是否在进行中且玩家在游戏中
+    if (
+        room[RoomKey.GameState.value] == GameStatus.Playing.value
+        and RoomKey.GameData.value in room
+        and user_id in room[RoomKey.GameData.value][GameDataKey.PlayersInGame.value]
+    ):
+        game_data = room[RoomKey.GameData.value]
+
+        # 检查是否只剩两个活跃玩家
+        active_players = [
+            p
+            for p in game_data[GameDataKey.PlayersInGame.value]
+            if p not in game_data[GameDataKey.FoldedPlayers.value]
+        ]
+        if len(active_players) != 2:
+            socketio.emit(
+                "invalid_showdown", 
+                {"message": "只能剩两个玩家时才能开牌"}
+            )
+            return
+
+        # 检查是否是该玩家的回合
+        if user_id != game_data[GameDataKey.PlayersInGame.value][game_data["current_turn"]]:
+            return
+
+        # 广播开牌信息
+        socketio.emit(
+            "player_requested_showdown",
+            {"player_id": user_id, "player_name": room[RoomKey.Players.value][user_id][PlayerKey.Username.value]},
+        )
+
+        # 执行开牌，确定胜利者
+        determine_winner()
 
 
 # 进行到下一个玩家的回合
@@ -1124,21 +1213,21 @@ def next_turn():
     - 如果玩家金币不足，触发封顶并确定胜利者
     - 否则开始下一个玩家的回合
     """
-    game_data = room["game_data"]
-    total_players = len(game_data["players_in_game"])
+    game_data = room[RoomKey.GameData.value]
+    total_players = len(game_data[GameDataKey.PlayersInGame.value])
 
     # 找到下一个未弃牌的玩家
     next_turn_index = (game_data["current_turn"] + 1) % total_players
-    while game_data["players_in_game"][next_turn_index] in game_data["folded_players"]:
+    while game_data[GameDataKey.PlayersInGame.value][next_turn_index] in game_data[GameDataKey.FoldedPlayers.value]:
         next_turn_index = (next_turn_index + 1) % total_players
 
     # 更新当前回合
     game_data["current_turn"] = next_turn_index
 
     # 检查下一个玩家是否有足够的金币继续游戏
-    next_player_id = game_data["players_in_game"][next_turn_index]
-    next_player_coins = room["players"][next_player_id]["coins"]
-    amount_needed = game_data["current_bet"] - game_data["player_bets"].get(
+    next_player_id = game_data[GameDataKey.PlayersInGame.value][next_turn_index]
+    next_player_coins = room[RoomKey.Players.value][next_player_id][PlayerKey.Coins.value]
+    amount_needed = game_data["current_bet"] - game_data[GameDataKey.PlayerBets.value].get(
         next_player_id, 0
     )
 
@@ -1148,7 +1237,7 @@ def next_turn():
             "player_coins_insufficient",
             {
                 "player_id": next_player_id,
-                "player_name": room["players"][next_player_id]["username"],
+                "player_name": room[RoomKey.Players.value][next_player_id][PlayerKey.Username.value],
                 "needed_amount": amount_needed,
                 "available_coins": next_player_coins,
             },
@@ -1337,12 +1426,12 @@ def compare_hands(*args):
 
         # 235和豹子的比较
         if is_hand1_different_suits_235 and is_hand2_three_of_a_kind:
-            if room["settings"]["is_235_greater_than_three_of_a_kind"]:
+            if room[RoomKey.Settings.value][RoomSettingKey.Is235GreaterThanThreeOfAKind.value]:
                 return 1  # 235 > 豹子（配置开启时）
             else:
                 return -1  # 235 < 豹子（配置关闭时）
         elif is_hand1_three_of_a_kind and is_hand2_different_suits_235:
-            if room["settings"]["is_235_greater_than_three_of_a_kind"]:
+            if room[RoomKey.Settings.value][RoomSettingKey.Is235GreaterThanThreeOfAKind.value]:
                 return -1  # 豹子 < 235（配置开启时）
             else:
                 return 1  # 豹子 > 235（配置关闭时）
@@ -1357,7 +1446,7 @@ def compare_hands(*args):
             } and is_flush(hand2)
             if (
                 is_hand2_same_suit_235
-                and room["settings"]["is_235_greater_than_three_of_a_kind"]
+                and room[RoomKey.Settings.value][RoomSettingKey.Is235GreaterThanThreeOfAKind.value]
             ):
                 return (
                     1 if has_three_of_a_kind_in_other_hands else -1
@@ -1371,7 +1460,7 @@ def compare_hands(*args):
             } and is_flush(hand1)
             if (
                 is_hand1_same_suit_235
-                and room["settings"]["is_235_greater_than_three_of_a_kind"]
+                and room[RoomKey.Settings.value][RoomSettingKey.Is235GreaterThanThreeOfAKind.value]
             ):
                 return (
                     -1 if has_three_of_a_kind_in_other_hands else 1
@@ -1380,7 +1469,7 @@ def compare_hands(*args):
         # 两个235的比较
         elif is_hand1_different_suits_235 and is_hand2_different_suits_235:
             # 如果禁用235大于豹子，则235之间的比较应该直接视为相等
-            if not room["settings"]["is_235_greater_than_three_of_a_kind"]:
+            if not room[RoomKey.Settings.value][RoomSettingKey.Is235GreaterThanThreeOfAKind.value]:
                 # 对于235的特殊情况，无论牌的顺序和花色如何，它们应该被视为相等
                 # 因为235的数值总是固定的（2、3、5）
                 return 0

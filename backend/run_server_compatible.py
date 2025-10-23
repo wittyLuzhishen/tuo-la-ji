@@ -1,5 +1,5 @@
 # 使用更兼容配置的服务器启动脚本
-from app import app, socketio
+from app_new import app, socketio
 import sys
 
 if __name__ == "__main__":

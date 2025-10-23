@@ -156,6 +156,138 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 房间列表模态框 -->
+                <div id="room-list-modal" class="modal">
+                    <div class="modal-content" style="max-width: 800px; width: 90%;">
+                        <h2>房间列表</h2>
+                        
+                        <!-- 房间筛选区域 -->
+                        <div class="room-filters mb-3">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="filter-room-name">房间名称:</label>
+                                    <input type="text" id="filter-room-name" class="form-control" placeholder="输入房间名称">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="filter-player-count">玩家数量:</label>
+                                    <select id="filter-player-count" class="form-control">
+                                        <option value="">不限</option>
+                                        <option value="1">1人</option>
+                                        <option value="2">2人</option>
+                                        <option value="3">3人</option>
+                                        <option value="4">4人</option>
+                                        <option value="5">5人</option>
+                                        <option value="6">6人</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="filter-room-status">房间状态:</label>
+                                    <select id="filter-room-status" class="form-control">
+                                        <option value="">不限</option>
+                                        <option value="waiting">等待中</option>
+                                        <option value="playing">游戏中</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    <button id="apply-filters-btn" class="btn btn-primary">应用筛选</button>
+                                    <button id="reset-filters-btn" class="btn btn-secondary">重置</button>
+                                    <button id="refresh-room-list-btn" class="btn btn-info">刷新列表</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 房间列表 -->
+                        <div class="room-list-container">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>房间名称</th>
+                                        <th>房主</th>
+                                        <th>玩家数量</th>
+                                        <th>房间状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="room-list-tbody">
+                                    <!-- 房间列表将通过JavaScript动态生成 -->
+                                </tbody>
+                            </table>
+                            <div id="no-rooms-message" class="text-center" style="display: none;">
+                                暂无可用房间
+                            </div>
+                        </div>
+                        
+                        <div class="modal-buttons">
+                            <button id="close-room-list-btn" class="btn btn-secondary">关闭</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 创建房间模态框 -->
+                <div id="create-room-modal" class="modal">
+                    <div class="modal-content">
+                        <h2>创建房间</h2>
+                        <div class="create-room-form">
+                            <div class="mb-3">
+                                <label for="new-room-name">房间名称:</label>
+                                <input type="text" id="new-room-name" class="form-control" placeholder="请输入房间名称">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="new-room-max-players">最大玩家数:</label>
+                                <select id="new-room-max-players" class="form-control">
+                                    <option value="2">2人</option>
+                                    <option value="3">3人</option>
+                                    <option value="4">4人</option>
+                                    <option value="5">5人</option>
+                                    <option value="6" selected>6人</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h5>游戏规则设置</h5>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" id="new-room-235-greater" class="form-check-input">
+                                    <label class="form-check-label" for="new-room-235-greater">
+                                        非同花235大于豹子
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="new-room-initial-coins">初始金币数:</label>
+                                    <input type="number" id="new-room-initial-coins" class="form-control" min="100" max="10000" value="1000">
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="new-room-base-bet">底注数量:</label>
+                                    <input type="number" id="new-room-base-bet" class="form-control" min="1" max="100" value="10">
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="new-room-max-bet">单注封顶金币数:</label>
+                                    <input type="number" id="new-room-max-bet" class="form-control" min="1" max="10000" value="1000">
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="new-room-max-hands">手数封顶数:</label>
+                                    <input type="number" id="new-room-max-hands" class="form-control" min="1" max="100" value="10">
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="new-room-max-pot-amount">当局底池最大数额:</label>
+                                    <input type="number" id="new-room-max-pot-amount" class="form-control" min="100" max="1000000" step="100" value="10000">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-buttons">
+                            <button id="confirm-create-room-btn" class="btn btn-primary">创建房间</button>
+                            <button id="cancel-create-room-btn" class="btn btn-secondary">取消</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -248,6 +380,8 @@
                             <button id="ready-btn" class="btn btn-success mb-2" disabled>准备就绪</button>
                             <button id="view-rules-btn" class="btn btn-info mb-2">查看规则</button>
                             <button id="view-room-settings-btn" class="btn btn-info mb-2">查看房间设置</button>
+                            <button id="room-list-btn" class="btn btn-primary mb-2">房间列表</button>
+                            <button id="create-room-btn" class="btn btn-success mb-2">创建房间</button>
                         </div>
                     </div>
 
@@ -1024,6 +1158,227 @@
             }
         }
 
+        // 更新房间列表
+        function updateRoomList(rooms) {
+            const roomListContainer = document.getElementById('room-list-container');
+            const noRoomsMessage = document.getElementById('no-rooms-message');
+            
+            // 清空当前房间列表
+            roomListContainer.innerHTML = '';
+            
+            if (rooms.length === 0) {
+                // 显示无房间消息
+                noRoomsMessage.style.display = 'block';
+            } else {
+                // 隐藏无房间消息
+                noRoomsMessage.style.display = 'none';
+                
+                // 创建房间列表表格
+                const table = document.createElement('table');
+                table.className = 'table table-striped';
+                
+                // 创建表头
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = `
+                    <th>房间名称</th>
+                    <th>玩家数量</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                `;
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+                
+                // 创建表体
+                const tbody = document.createElement('tbody');
+                
+                // 添加每个房间到列表
+                rooms.forEach(room => {
+                    const row = document.createElement('tr');
+                    const statusClass = room.status === 'waiting' ? 'room-status-waiting' : 'room-status-playing';
+                    const statusText = room.status === 'waiting' ? '等待中' : '游戏中';
+                    const isFull = room.player_count >= room.max_players;
+                    const isPlaying = room.status === 'playing';
+                    
+                    row.innerHTML = `
+                        <td>${room.room_name}</td>
+                        <td>${room.player_count}/${room.max_players}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td>
+                            <button class="btn-join-room" 
+                                    onclick="joinRoom('${room.room_id}')" 
+                                    ${isFull || isPlaying ? 'disabled' : ''}>
+                                ${isFull ? '已满' : (isPlaying ? '游戏中' : '加入')}
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                table.appendChild(tbody);
+                roomListContainer.appendChild(table);
+            }
+        }
+
+        // 加入房间
+        function joinRoom(roomId) {
+            socket.emit('join_room', {
+                room_id: roomId
+            });
+        }
+
+        // 筛选房间
+        function filterRooms() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const nameFilter = document.getElementById('name-filter').value.toLowerCase();
+            
+            // 获取所有房间行
+            const rows = document.querySelectorAll('#room-list-container tbody tr');
+            
+            rows.forEach(row => {
+                const nameCell = row.cells[0].textContent.toLowerCase();
+                const statusCell = row.cells[2].textContent;
+                
+                // 检查是否匹配筛选条件
+                const nameMatch = nameFilter === '' || nameCell.includes(nameFilter);
+                const statusMatch = statusFilter === 'all' || 
+                                  (statusFilter === 'waiting' && statusCell === '等待中') || 
+                                  (statusFilter === 'playing' && statusCell === '游戏中');
+                
+                // 显示或隐藏行
+                row.style.display = nameMatch && statusMatch ? '' : 'none';
+            });
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('status-filter').value = 'all';
+            document.getElementById('name-filter').value = '';
+            filterRooms();
+        }
+
+        // 刷新房间列表
+        function refreshRoomList() {
+            socket.emit('get_room_list');
+        }
+
+        // 切换私有房间密码输入
+        function togglePrivatePassword() {
+            const isPrivateCheckbox = document.getElementById('is-private');
+            const passwordContainer = document.getElementById('password-container');
+            
+            if (isPrivateCheckbox.checked) {
+                passwordContainer.style.display = 'block';
+            } else {
+                passwordContainer.style.display = 'none';
+            }
+        }
+
+        // 初始化房间列表相关的事件监听器
+        function initRoomListEvents() {
+            // 添加房间列表按钮点击事件
+            const roomListBtn = document.getElementById('room-list-btn');
+            if (roomListBtn) {
+                roomListBtn.addEventListener('click', function () {
+                    document.getElementById('room-list-modal').classList.add('show');
+                    // 获取房间列表
+                    socket.emit('get_room_list');
+                });
+            }
+
+            // 添加创建房间按钮点击事件
+            const createRoomBtn = document.getElementById('create-room-btn');
+            if (createRoomBtn) {
+                createRoomBtn.addEventListener('click', function () {
+                    document.getElementById('create-room-modal').classList.add('show');
+                });
+            }
+
+            // 添加关闭房间列表模态框按钮点击事件
+            const closeRoomListModalBtn = document.getElementById('close-room-list-modal-btn');
+            if (closeRoomListModalBtn) {
+                closeRoomListModalBtn.addEventListener('click', function () {
+                    document.getElementById('room-list-modal').classList.remove('show');
+                });
+            }
+
+            // 添加关闭创建房间模态框按钮点击事件
+            const closeCreateRoomModalBtn = document.getElementById('close-create-room-modal-btn');
+            if (closeCreateRoomModalBtn) {
+                closeCreateRoomModalBtn.addEventListener('click', function () {
+                    document.getElementById('create-room-modal').classList.remove('show');
+                });
+            }
+
+            // 添加创建房间表单提交事件
+            const createRoomForm = document.getElementById('create-room-form');
+            if (createRoomForm) {
+                createRoomForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    
+                    const roomName = document.getElementById('room-name').value;
+                    const maxPlayers = parseInt(document.getElementById('max-players').value);
+                    const isPrivate = document.getElementById('is-private').checked;
+                    const roomPassword = document.getElementById('room-password').value;
+                    const initialCoins = parseInt(document.getElementById('initial-coins').value);
+                    const baseBet = parseInt(document.getElementById('base-bet').value);
+                    const maxBet = document.getElementById('max-bet').value ? parseInt(document.getElementById('max-bet').value) : null;
+                    const maxHands = document.getElementById('max-hands').value ? parseInt(document.getElementById('max-hands').value) : null;
+                    const is235Greater = document.getElementById('is-235-greater').checked;
+
+                    // 创建房间
+                    socket.emit('create_room', {
+                        room_name: roomName,
+                        max_players: maxPlayers,
+                        is_private: isPrivate,
+                        room_password: roomPassword,
+                        settings: {
+                            initial_coins: initialCoins,
+                            base_bet: baseBet,
+                            max_bet: maxBet,
+                            max_hands: maxHands,
+                            is_235_greater_than_three_of_a_kind: is235Greater
+                        }
+                    });
+
+                    // 关闭创建房间模态框
+                    document.getElementById('create-room-modal').classList.remove('show');
+                });
+            }
+        }
+
+        // 初始化页面
+        function initializePage() {
+            // 添加私有房间复选框事件监听器
+            const isPrivateCheckbox = document.getElementById('is-private');
+            if (isPrivateCheckbox) {
+                isPrivateCheckbox.addEventListener('change', togglePrivatePassword);
+            }
+            
+            // 初始时隐藏密码输入框
+            togglePrivatePassword();
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置SocketIO事件监听器
+            setupSocketListeners();
+            // 初始化页面
+            initializePage();
+        });
+
+        // 更新房间信息
+        function updateRoomInfo(data) {
+            // 这里是原有的更新房间信息函数
+            // 保持原有代码不变
+        }
+
+        // 开始游戏
+        function startGame(data) {
+            // 这里是原有的开始游戏函数
+            // 保持原有代码不变
+        }
+
         // 设置SocketIO事件监听器
         function setupSocketListeners() {
             // 连接成功
@@ -1061,6 +1416,9 @@
                         avatar_url: avatarUrlWithTimestamp
                     });
                 }
+                
+                // 初始化房间列表相关的事件监听器
+                initRoomListEvents();
             });
 
             // 处理用户名重复错误
@@ -1194,6 +1552,34 @@
                 } else {
                     console.log('未找到view-room-settings-modal模态框');
                 }
+            });
+
+            // 接收房间列表数据
+            socket.on('room_list', function (data) {
+                console.log('接收到房间列表数据:', data);
+                updateRoomList(data.rooms);
+            });
+
+            // 接收创建房间响应
+            socket.on('room_created', function (data) {
+                console.log('房间创建成功:', data);
+                // 关闭房间列表模态框
+                document.getElementById('room-list-modal').classList.remove('show');
+                // 刷新房间列表
+                socket.emit('get_room_list');
+            });
+
+            // 接收加入房间响应
+            socket.on('room_joined', function (data) {
+                console.log('加入房间成功:', data);
+                // 关闭房间列表模态框
+                document.getElementById('room-list-modal').classList.remove('show');
+            });
+
+            // 接收房间错误信息
+            socket.on('room_error', function (data) {
+                console.error('房间操作错误:', data);
+                alert('房间操作失败: ' + data.error);
             });
 
             // 连接断开
@@ -2205,51 +2591,59 @@
             }
         });
 
-        // 查看规则按钮点击事件
-        document.getElementById('view-rules-btn').addEventListener('click', function () {
-            document.getElementById('rules-modal').classList.add('show');
-        });
-
-        // 关闭规则模态框按钮点击事件
-        document.getElementById('close-rules-modal-btn').addEventListener('click', function () {
-            document.getElementById('rules-modal').classList.remove('show');
-        });
-
-        // 继续游戏按钮点击事件
-        document.getElementById('continue-yes-btn').addEventListener('click', function () {
-            socket.emit('continue_game', { continue: true });
-            document.getElementById('continue-modal').classList.remove('show');
-        });
-
-        // 退出游戏按钮点击事件
-        document.getElementById('continue-no-btn').addEventListener('click', function () {
-            socket.emit('continue_game', { continue: false });
-            document.getElementById('continue-modal').classList.remove('show');
-        });
-
-        // 点击模态框外部关闭模态框
-        window.addEventListener('click', function (event) {
-            const userSetupModal = document.getElementById('user-setup-modal');
-            const rulesModal = document.getElementById('rules-modal');
-            const continueModal = document.getElementById('continue-modal');
-            const rulesSettingsModal = document.getElementById('rules-settings-modal');
-            const viewRoomSettingsModal = document.getElementById('view-room-settings-modal');
-
-            if (event.target === userSetupModal) {
-                // 不允许点击外部关闭用户设置模态框，用户必须完成设置
-            } else if (event.target === rulesModal) {
-                rulesModal.classList.remove('show');
-            } else if (event.target === continueModal) {
-                continueModal.classList.remove('show');
-            } else if (event.target === rulesSettingsModal) {
-                rulesSettingsModal.classList.remove('show');
-            } else if (event.target === viewRoomSettingsModal) {
-                viewRoomSettingsModal.classList.remove('show');
+        // 初始化页面
+        function initializePage() {
+            // 添加私有房间复选框事件监听器
+            const isPrivateCheckbox = document.getElementById('is-private');
+            if (isPrivateCheckbox) {
+                isPrivateCheckbox.addEventListener('change', togglePrivatePassword);
             }
-        });
+            
+            // 初始时隐藏密码输入框
+            togglePrivatePassword();
+        }
 
-        // 折叠面板交互逻辑
-        document.addEventListener('DOMContentLoaded', function () {
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置SocketIO事件监听器
+            setupSocketListeners();
+            // 初始化页面
+            initializePage();
+            
+            // 添加查看规则按钮点击事件
+            const viewRulesBtn = document.getElementById('view-rules-btn');
+            if (viewRulesBtn) {
+                viewRulesBtn.addEventListener('click', function () {
+                    document.getElementById('rules-modal').classList.add('show');
+                });
+            }
+            
+            // 添加关闭规则模态框按钮点击事件
+            const closeRulesModalBtn = document.getElementById('close-rules-modal-btn');
+            if (closeRulesModalBtn) {
+                closeRulesModalBtn.addEventListener('click', function () {
+                    document.getElementById('rules-modal').classList.remove('show');
+                });
+            }
+            
+            // 添加继续游戏按钮点击事件
+            const continueYesBtn = document.getElementById('continue-yes-btn');
+            if (continueYesBtn) {
+                continueYesBtn.addEventListener('click', function () {
+                    socket.emit('continue_game', { continue: true });
+                    document.getElementById('continue-modal').classList.remove('show');
+                });
+            }
+            
+            // 添加退出游戏按钮点击事件
+            const continueNoBtn = document.getElementById('continue-no-btn');
+            if (continueNoBtn) {
+                continueNoBtn.addEventListener('click', function () {
+                    socket.emit('continue_game', { continue: false });
+                    document.getElementById('continue-modal').classList.remove('show');
+                });
+            }
+            
             // 获取所有可折叠面板头部
             const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
 
@@ -2278,6 +2672,33 @@
                 });
 
                 // 初始化时默认展开所有面板 - 不设置最大高度，允许内容自适应
+            });
+            
+            // 点击模态框外部关闭模态框
+            window.addEventListener('click', function (event) {
+                const userSetupModal = document.getElementById('user-setup-modal');
+                const rulesModal = document.getElementById('rules-modal');
+                const continueModal = document.getElementById('continue-modal');
+                const rulesSettingsModal = document.getElementById('rules-settings-modal');
+                const viewRoomSettingsModal = document.getElementById('view-room-settings-modal');
+                const roomListModal = document.getElementById('room-list-modal');
+                const createRoomModal = document.getElementById('create-room-modal');
+
+                if (event.target === userSetupModal) {
+                    // 不允许点击外部关闭用户设置模态框，用户必须完成设置
+                } else if (event.target === rulesModal) {
+                    rulesModal.classList.remove('show');
+                } else if (event.target === continueModal) {
+                    continueModal.classList.remove('show');
+                } else if (event.target === rulesSettingsModal) {
+                    rulesSettingsModal.classList.remove('show');
+                } else if (event.target === viewRoomSettingsModal) {
+                    viewRoomSettingsModal.classList.remove('show');
+                } else if (event.target === roomListModal) {
+                    roomListModal.classList.remove('show');
+                } else if (event.target === createRoomModal) {
+                    createRoomModal.classList.remove('show');
+                }
             });
         });
     </script>

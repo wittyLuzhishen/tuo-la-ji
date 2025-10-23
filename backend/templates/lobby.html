@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖拉机纸牌游戏 - 房间大厅</title>
+    <link rel="stylesheet" href="/static/lobby.css">
+    <!-- Socket.IO客户端库加载 - 使用主要CDN和备用CDN -->
+    <script>var socketIOLoaded = false;</script>
+    <script id="socket-io-main" src="https://unpkg.com/socket.io-client@4.4.1/dist/socket.io.min.js"
+        onload="socketIOLoaded = true;"></script>
+    <!-- 如果主CDN加载失败，尝试备用CDN -->
+    <script>setTimeout(function () {
+            if (!socketIOLoaded) {
+                console.log('主CDN加载失败，尝试备用CDN');
+                var script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js';
+                script.onload = function () { socketIOLoaded = true; };
+                document.head.appendChild(script);
+            }
+        }, 3000);</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <header class="game-header">
+            <h1>拖拉机纸牌游戏</h1>
+            <div class="user-info">
+                <div class="avatar-container">
+                    <img id="user-avatar" src="/static/avatars/default.svg" alt="用户头像">
+                </div>
+                <div class="user-details">
+                    <div id="username-display">未登录</div>
+                    <div id="user-coins">金币: 0</div>
+                </div>
+            </div>
+        </header>
+
+        <main class="lobby-main">
+            <!-- 用户设置模态框 -->
+            <div id="user-setup-modal" class="modal" tabindex="-1" role="dialog">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">设置您的用户信息</h5>
+                        </div>
+                        <div class="modal-body">
+                            <!-- 头像设置部分 -->
+                            <div class="avatar-setup mb-4 text-center">
+                                <h6>选择或上传头像</h6>
+                                <div id="selected-avatar" class="mb-3">
+                                    <img id="avatar-preview" src="/static/avatars/default.svg" alt="头像预览"
+                                        style="width: 100px; height: 100px; border-radius: 0px;">
+                                </div>
+                                <!-- 预设头像选择 -->
+                                <div class="preset-avatars">
+                                    <div class="avatar-grid"
+                                        style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+                                        <!-- 预设头像将通过JavaScript动态生成 -->
+                                    </div>
+                                </div>
+                                <!-- 上传头像 -->
+                                <div class="upload-avatar mt-3" style="display: flex; align-items: center;">
+                                    <input type="file" id="avatar-upload" accept="image/*"
+                                        style="margin-right: 10px;">
+                                    <button id="upload-avatar-btn" class="btn btn-sm btn-secondary">上传</button>
+                                </div>
+                            </div>
+
+                            <!-- 用户名设置部分 -->
+                            <div class="username-setup">
+                                <label for="username-input">请输入玩家昵称:</label>
+                                <div id="username-error"
+                                    style="color: red; font-size: 12px; margin-bottom: 5px; display: none;"></div>
+                                <input type="text" id="username-input" class="form-control" placeholder="请输入用户名">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="confirm-user-setup" class="btn btn-primary">确定</button>
+                            <button id="cancel-user-setup" class="btn btn-secondary">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 游戏规则模态框 -->
+            <div id="rules-modal" class="modal">
+                <div class="modal-content">
+                    <h2>拖拉机纸牌游戏规则</h2>
+                    <div class="rules-content">
+                        <h3>基础规则</h3>
+                        <ul>
+                            <li>游戏使用一副完整的扑克牌（52张，不含大小王）</li>
+                            <li>每个玩家发3张牌</li>
+                            <li>玩家可以通过看牌、下注、跟注、加注、弃牌等操作进行游戏</li>
+                        </ul>
+
+                        <h3>牌型大小（从大到小）</h3>
+                        <ol>
+                            <li><strong>非同花235</strong>：三张牌为2、3、5且花色不全相同（在配置开启且存在豹子时最大）</li>
+                            <li><strong>豹子</strong>：三张数字相同的牌</li>
+                            <li><strong>相同花色的顺子（同花顺）</strong>：三张花色相同且数字连续的牌</li>
+                            <li><strong>顺子</strong>：三张数字连续但花色不完全相同的牌</li>
+                            <li><strong>相同花色的非顺子（金花）</strong>：三张花色相同但数字不连续的牌</li>
+                            <li><strong>对子</strong>：三张牌中有两张数字相同的牌</li>
+                            <li><strong>单牌</strong>：不符合以上任何牌型的牌</li>
+                        </ol>
+
+                        <h3>术语解释</h3>
+                        <ul>
+                            <li><strong>庄家</strong>：上一轮赢的玩家是下一轮的庄家，第一局或者赢家离开的情况随机选一个玩家为庄家。</li>
+                            <li><strong>底分</strong>：游戏开始前每位玩家都要先投入游戏币。根据游戏房间的不同而数值不同。</li>
+                            <li><strong>封顶</strong>：有两种情况会出现封顶
+                                <ul>
+                                    <li>A）每个场设有允许付出的游戏币总和上限，达到或超过上限则系统自动开牌。</li>
+                                    <li>B）当某个玩家所剩的游戏币不够下次付出时，则封顶，系统自动开牌。</li>
+                                </ul>
+                            </li>
+                            <li><strong>看牌</strong>：查看自己三张牌的花色和点数，看牌后的投注为明注。</li>
+                            <li><strong>暗</strong>：不看牌投入游戏币。</li>
+                            <li><strong>明</strong>：看牌后投入游戏币，明注后投入的游戏币翻倍。如果加的话是先加后翻倍。</li>
+                            <li><strong>跟</strong>：投入和上一家一样数量的游戏币。自己是明牌就跟明；暗牌就跟暗。</li>
+                            <li><strong>加</strong>：在上家投入游戏币的基础上再增加的游戏币。比如上家投入100，选择加入100，则共投入200。可以选择加的具体游戏币数值为3种，依场的设置不同而不同。
+                            </li>
+                            <li><strong>开牌</strong>：当可以投注的玩家只剩下两个人时，可以随时选择开牌，选开牌的玩家要付出当前需要付出游戏币的双倍数量，如果牌型大小相同，则先开牌的玩家判输。
+                            </li>
+                            <li><strong>放弃</strong>：放弃当前付出的所有游戏币，判输。</li>
+                        </ul>
+
+                        <h3>游戏流程</h3>
+                        <ol>
+                            <li><strong>投入底分</strong>：发牌之前大家先付出的游戏币。</li>
+                            <li><strong>发牌</strong>：从庄家开始发牌，第一次开局的话，随机选择一个用户先发牌。每人发三张牌，牌面向下，为暗牌。</li>
+                            <li><strong>游戏</strong>：庄家的顺时针的下一家先开始下注，其他玩家依次顺时针操作。轮到玩家操作时，玩家根据条件和判断形势可以进行加、跟、看牌、放弃、开牌等操作。
+                            </li>
+                            <li><strong>开牌</strong>：当最后游戏者只剩下2个人时，则可以随时选择开牌；或者有大于2人的用户，但是付出的游戏币已经达到封顶时，则由系统开牌。</li>
+                            <li><strong>判断胜负</strong>：根据牌型比较规则来判断胜负。显示所有没有放弃的玩家的牌型。如果可以投入游戏币的玩家只剩下一个，则判此玩家为胜利玩家。
+                            </li>
+                        </ol>
+
+                        <h3>特殊规则</h3>
+                        <ul>
+                            <li><strong>A23</strong>是最小的顺子</li>
+                            <li><strong>非同花235</strong>可配置是否大于豹子</li>
+                            <li>玩家离开或断线则直接视为放弃</li>
+                            <li>每局结束后，玩家依次选择是否继续游戏</li>
+                            <li>当房间中所有玩家都离开或断线后，再有玩家进入，视为新的开始</li>
+                        </ul>
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="close-rules-modal-btn">关闭</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 房间列表区域 -->
+            <section class="room-section">
+                <div class="section-header">
+                    <h2>房间列表</h2>
+                    <div class="action-buttons">
+                        <button id="refresh-room-list-btn" class="btn btn-info">刷新列表</button>
+                        <button id="create-room-btn" class="btn btn-success">创建房间</button>
+                    </div>
+                </div>
+
+                <!-- 房间筛选区域 -->
+                <div class="room-filters">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="filter-room-name">房间名称:</label>
+                            <input type="text" id="filter-room-name" class="form-control" placeholder="输入房间名称">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filter-player-count">玩家数量:</label>
+                            <select id="filter-player-count" class="form-control">
+                                <option value="">不限</option>
+                                <option value="1">1人</option>
+                                <option value="2">2人</option>
+                                <option value="3">3人</option>
+                                <option value="4">4人</option>
+                                <option value="5">5人</option>
+                                <option value="6">6人</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filter-room-status">房间状态:</label>
+                            <select id="filter-room-status" class="form-control">
+                                <option value="">不限</option>
+                                <option value="waiting">等待中</option>
+                                <option value="playing">游戏中</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-12">
+                            <button id="apply-filters-btn" class="btn btn-primary">应用筛选</button>
+                            <button id="reset-filters-btn" class="btn btn-secondary">重置</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 房间列表 -->
+                <div class="room-list-container">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>房间名称</th>
+                                <th>房主</th>
+                                <th>玩家数量</th>
+                                <th>房间状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="room-list-tbody">
+                            <!-- 房间列表将通过JavaScript动态生成 -->
+                        </tbody>
+                    </table>
+                    <div id="no-rooms-message" class="text-center" style="display: none;">
+                        暂无可用房间
+                    </div>
+                </div>
+            </section>
+
+            <!-- 创建房间模态框 -->
+            <div id="create-room-modal" class="modal">
+                <div class="modal-content">
+                    <h2>创建房间</h2>
+                    <div class="create-room-form">
+                        <div class="mb-3">
+                            <label for="new-room-name">房间名称:</label>
+                            <input type="text" id="new-room-name" class="form-control" placeholder="请输入房间名称">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="new-room-max-players">最大玩家数:</label>
+                            <select id="new-room-max-players" class="form-control">
+                                <option value="2">2人</option>
+                                <option value="3">3人</option>
+                                <option value="4">4人</option>
+                                <option value="5">5人</option>
+                                <option value="6" selected>6人</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h5>游戏规则设置</h5>
+                            <div class="form-check mb-2">
+                                <input type="checkbox" id="new-room-235-greater" class="form-check-input">
+                                <label class="form-check-label" for="new-room-235-greater">
+                                    非同花235大于豹子
+                                </label>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label for="new-room-initial-coins">初始金币数:</label>
+                                <input type="number" id="new-room-initial-coins" class="form-control" min="100" max="10000" value="1000">
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label for="new-room-base-bet">底注数量:</label>
+                                <input type="number" id="new-room-base-bet" class="form-control" min="1" max="100" value="10">
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label for="new-room-max-bet">单注封顶金币数:</label>
+                                <input type="number" id="new-room-max-bet" class="form-control" min="1" max="10000" value="1000">
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label for="new-room-max-hands">手数封顶数:</label>
+                                <input type="number" id="new-room-max-hands" class="form-control" min="1" max="100" value="10">
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label for="new-room-max-pot-amount">当局底池最大数额:</label>
+                                <input type="number" id="new-room-max-pot-amount" class="form-control" min="100" max="1000000" step="100" value="10000">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="confirm-create-room-btn" class="btn btn-primary">创建房间</button>
+                        <button id="cancel-create-room-btn" class="btn btn-secondary">取消</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="game-footer">
+            <div class="footer-links">
+                <button id="view-rules-btn" class="btn btn-outline-secondary">游戏规则</button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // 全局变量
+        let socket = null;
+        let currentUser = null;
+        let currentRoomId = null;
+        let roomList = [];
+
+        // DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化Socket.IO连接
+            initSocketConnection();
+            
+            // 设置事件监听器
+            setupEventListeners();
+            
+            // 初始化页面
+            initializePage();
+        });
+
+        // 初始化Socket.IO连接
+        function initSocketConnection() {
+            // 确保Socket.IO已加载
+            if (typeof io === 'undefined') {
+                console.error('Socket.IO未加载');
+                return;
+            }
+
+            // 创建Socket.IO连接
+            socket = io();
+            
+            // 设置Socket事件监听器
+            setupSocketListeners();
+        }
+
+        // 设置Socket事件监听器
+        function setupSocketListeners() {
+            // 连接成功
+            socket.on('connect', function() {
+                console.log('已连接到服务器');
+                // 如果用户已登录，重新设置用户名
+                if (currentUser) {
+                    socket.emit('set_username', { username: currentUser.username });
+                }
+                // 获取房间列表
+                getRoomList();
+            });
+
+            // 连接断开
+            socket.on('disconnect', function() {
+                console.log('与服务器连接断开');
+            });
+
+            // 用户名设置成功
+            socket.on('username_set', function(data) {
+                currentUser = data.user;
+                updateUserDisplay();
+            });
+
+            // 房间列表更新
+            socket.on('room_list', function(data) {
+                roomList = data.rooms;
+                displayRoomList(roomList);
+            });
+
+            // 房间创建成功
+            socket.on('room_created', function(data) {
+                currentRoomId = data.room_id;
+                // 跳转到游戏房间页面
+                window.location.href = '/room?id=' + currentRoomId;
+            });
+
+            // 加入房间成功
+            socket.on('room_joined', function(data) {
+                currentRoomId = data.room_id;
+                // 跳转到游戏房间页面
+                window.location.href = '/room?id=' + currentRoomId;
+            });
+
+            // 错误处理
+            socket.on('error', function(data) {
+                alert(data.message);
+            });
+        }
+
+        // 设置页面事件监听器
+        function setupEventListeners() {
+            // 用户设置相关
+            document.getElementById('confirm-user-setup').addEventListener('click', confirmUserSetup);
+            document.getElementById('cancel-user-setup').addEventListener('click', function() {
+                document.getElementById('user-setup-modal').style.display = 'none';
+            });
+            
+            // 头像上传相关
+            document.getElementById('upload-avatar-btn').addEventListener('click', uploadAvatar);
+            
+            // 房间列表相关
+            document.getElementById('refresh-room-list-btn').addEventListener('click', getRoomList);
+            document.getElementById('apply-filters-btn').addEventListener('click', applyFilters);
+            document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
+            
+            // 创建房间相关
+            document.getElementById('create-room-btn').addEventListener('click', showCreateRoomModal);
+            document.getElementById('confirm-create-room-btn').addEventListener('click', createRoom);
+            document.getElementById('cancel-create-room-btn').addEventListener('click', function() {
+                document.getElementById('create-room-modal').style.display = 'none';
+            });
+            
+            // 游戏规则相关
+            document.getElementById('view-rules-btn').addEventListener('click', function() {
+                document.getElementById('rules-modal').style.display = 'block';
+            });
+            document.getElementById('close-rules-modal-btn').addEventListener('click', function() {
+                document.getElementById('rules-modal').style.display = 'none';
+            });
+            
+            // 模态框外部点击关闭
+            window.addEventListener('click', function(event) {
+                if (event.target.classList.contains('modal')) {
+                    event.target.style.display = 'none';
+                }
+            });
+        }
+
+        // 初始化页面
+        function initializePage() {
+            // 加载预设头像
+            loadPresetAvatars();
+            
+            // 检查是否已登录
+            checkUserLogin();
+            
+            // 获取房间列表
+            getRoomList();
+        }
+
+        // 检查用户登录状态
+        function checkUserLogin() {
+            // 从本地存储获取用户信息
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                updateUserDisplay();
+            } else {
+                // 显示用户设置模态框
+                document.getElementById('user-setup-modal').style.display = 'block';
+            }
+        }
+
+        // 更新用户显示
+        function updateUserDisplay() {
+            if (currentUser) {
+                document.getElementById('username-display').textContent = currentUser.username;
+                document.getElementById('user-coins').textContent = '金币: ' + (currentUser.coins || 0);
+                if (currentUser.avatar) {
+                    document.getElementById('user-avatar').src = currentUser.avatar;
+                }
+                // 保存到本地存储
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            }
+        }
+
+        // 确认用户设置
+        function confirmUserSetup() {
+            const username = document.getElementById('username-input').value.trim();
+            const avatarPreview = document.getElementById('avatar-preview').src;
+            
+            if (!username) {
+                document.getElementById('username-error').textContent = '请输入用户名';
+                document.getElementById('username-error').style.display = 'block';
+                return;
+            }
+            
+            // 通过Socket.IO设置用户名
+            socket.emit('set_username', { 
+                username: username,
+                avatar: avatarPreview
+            });
+            
+            // 关闭模态框
+            document.getElementById('user-setup-modal').style.display = 'none';
+        }
+
+        // 加载预设头像
+        function loadPresetAvatars() {
+            const avatarGrid = document.querySelector('.avatar-grid');
+            const presetAvatars = [
+                '/static/avatars/default.svg',
+                '/static/avatars/avatar1.svg',
+                '/static/avatars/avatar2.svg',
+                '/static/avatars/avatar3.svg',
+                '/static/avatars/avatar4.svg',
+                '/static/avatars/avatar5.svg'
+            ];
+            
+            presetAvatars.forEach(avatar => {
+                const avatarOption = document.createElement('div');
+                avatarOption.className = 'avatar-option';
+                avatarOption.innerHTML = `<img src="${avatar}" alt="头像" style="width: 50px; height: 50px; cursor: pointer;">`;
+                
+                avatarOption.addEventListener('click', function() {
+                    document.getElementById('avatar-preview').src = avatar;
+                });
+                
+                avatarGrid.appendChild(avatarOption);
+            });
+        }
+
+        // 上传头像
+        function uploadAvatar() {
+            const fileInput = document.getElementById('avatar-upload');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch('/upload_avatar', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.url) {
+                    document.getElementById('avatar-preview').src = data.url;
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('上传失败:', error);
+                alert('上传失败，请重试');
+            });
+        }
+
+        // 获取房间列表
+        function getRoomList() {
+            socket.emit('get_room_list');
+        }
+
+        // 显示房间列表
+        function displayRoomList(rooms) {
+            const tbody = document.getElementById('room-list-tbody');
+            const noRoomsMessage = document.getElementById('no-rooms-message');
+            
+            // 清空现有列表
+            tbody.innerHTML = '';
+            
+            if (rooms.length === 0) {
+                noRoomsMessage.style.display = 'block';
+                return;
+            }
+            
+            noRoomsMessage.style.display = 'none';
+            
+            rooms.forEach(room => {
+                const row = document.createElement('tr');
+                
+                // 房间名称
+                const nameCell = document.createElement('td');
+                nameCell.textContent = room.name;
+                row.appendChild(nameCell);
+                
+                // 房主
+                const ownerCell = document.createElement('td');
+                ownerCell.textContent = room.owner || '未知';
+                row.appendChild(ownerCell);
+                
+                // 玩家数量
+                const playerCountCell = document.createElement('td');
+                playerCountCell.textContent = `${room.player_count || 0}/${room.max_players || 6}`;
+                row.appendChild(playerCountCell);
+                
+                // 房间状态
+                const statusCell = document.createElement('td');
+                const status = room.status === 'playing' ? '游戏中' : '等待中';
+                statusCell.textContent = status;
+                row.appendChild(statusCell);
+                
+                // 操作按钮
+                const actionCell = document.createElement('td');
+                const joinButton = document.createElement('button');
+                joinButton.className = 'btn btn-primary btn-sm';
+                joinButton.textContent = '加入房间';
+                joinButton.addEventListener('click', function() {
+                    joinRoom(room.id);
+                });
+                actionCell.appendChild(joinButton);
+                row.appendChild(actionCell);
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // 应用筛选
+        function applyFilters() {
+            const nameFilter = document.getElementById('filter-room-name').value.toLowerCase();
+            const playerCountFilter = document.getElementById('filter-player-count').value;
+            const statusFilter = document.getElementById('filter-room-status').value;
+            
+            const filteredRooms = roomList.filter(room => {
+                let matchName = !nameFilter || room.name.toLowerCase().includes(nameFilter);
+                let matchPlayerCount = !playerCountFilter || room.player_count == playerCountFilter;
+                let matchStatus = !statusFilter || room.status === statusFilter;
+                
+                return matchName && matchPlayerCount && matchStatus;
+            });
+            
+            displayRoomList(filteredRooms);
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('filter-room-name').value = '';
+            document.getElementById('filter-player-count').value = '';
+            document.getElementById('filter-room-status').value = '';
+            displayRoomList(roomList);
+        }
+
+        // 显示创建房间模态框
+        function showCreateRoomModal() {
+            document.getElementById('create-room-modal').style.display = 'block';
+        }
+
+        // 创建房间
+        function createRoom() {
+            const roomName = document.getElementById('new-room-name').value.trim();
+            const maxPlayers = parseInt(document.getElementById('new-room-max-players').value);
+            const settings235Greater = document.getElementById('new-room-235-greater').checked;
+            const initialCoins = parseInt(document.getElementById('new-room-initial-coins').value);
+            const baseBet = parseInt(document.getElementById('new-room-base-bet').value);
+            const maxBet = parseInt(document.getElementById('new-room-max-bet').value);
+            const maxHands = parseInt(document.getElementById('new-room-max-hands').value);
+            const maxPotAmount = parseInt(document.getElementById('new-room-max-pot-amount').value);
+            
+            if (!roomName) {
+                alert('请输入房间名称');
+                return;
+            }
+            
+            // 通过Socket.IO创建房间
+            socket.emit('create_room', {
+                name: roomName,
+                max_players: maxPlayers,
+                settings: {
+                    '235_greater': settings235Greater,
+                    initial_coins: initialCoins,
+                    base_bet: baseBet,
+                    max_bet: maxBet,
+                    max_hands: maxHands,
+                    max_pot_amount: maxPotAmount
+                }
+            });
+            
+            // 关闭模态框
+            document.getElementById('create-room-modal').style.display = 'none';
+        }
+
+        // 加入房间
+        function joinRoom(roomId) {
+            if (!currentUser) {
+                alert('请先设置用户名');
+                document.getElementById('user-setup-modal').style.display = 'block';
+                return;
+            }
+            
+            // 通过Socket.IO加入房间
+            socket.emit('join_room', { room_id: roomId });
+        }
+    </script>
+</body>
+
+</html>

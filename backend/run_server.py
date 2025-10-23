@@ -4,7 +4,7 @@ import eventlet
 eventlet.monkey_patch()
 
 # 然后再导入Flask应用
-from app import app, socketio
+from app_new import app, socketio
 import sys
 
 if __name__ == "__main__":

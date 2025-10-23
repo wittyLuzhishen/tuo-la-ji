@@ -1,18 +1,23 @@
 import unittest
-from app import (
+from game_logic import (
     is_straight_flush, is_three_of_a_kind, is_straight, is_flush, is_pair,
-    get_hand_rank, compare_hands, room
+    get_hand_rank, compare_hands
 )
+from game_enum import RoomKey, RoomSettingKey
 
 class TestTractorGameLogic(unittest.TestCase):
     
     def setUp(self):
-        # 保存原始设置，以便测试后恢复
-        self.original_235_setting = room['settings']['is_235_greater_than_three_of_a_kind']
+        # 创建模拟房间设置
+        self.room = {
+            'settings': {
+                'is_235_greater_than_three_of_a_kind': True
+            }
+        }
         
     def tearDown(self):
-        # 恢复原始设置
-        room['settings']['is_235_greater_than_three_of_a_kind'] = self.original_235_setting
+        # 不需要恢复设置，因为每个测试都使用新的房间设置
+        pass
     
     def test_hand_type_judgment(self):
         # 测试不同牌型的判断
@@ -65,7 +70,7 @@ class TestTractorGameLogic(unittest.TestCase):
     
     def test_hand_rank_with_235_disabled(self):
         # 测试禁用235大于豹子的情况
-        room['settings']['is_235_greater_than_three_of_a_kind'] = False
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = False
         
         # 同花顺（相同花色的顺子）
         straight_flush = [('A', '♥'), ('K', '♥'), ('Q', '♥')]
@@ -97,7 +102,7 @@ class TestTractorGameLogic(unittest.TestCase):
     
     def test_hand_rank_with_235_enabled(self):
         # 测试启用235大于豹子的情况
-        room['settings']['is_235_greater_than_three_of_a_kind'] = True
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = True
         
         # 235（不同花色）- 现在始终被视为单牌
         special_235 = [('2', '♥'), ('3', '♦'), ('5', '♠')]
@@ -117,13 +122,13 @@ class TestTractorGameLogic(unittest.TestCase):
     
     def test_compare_hands_different_types(self):
         # 测试不同牌型之间的比较
-        room['settings']['is_235_greater_than_three_of_a_kind'] = True
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = True
         
         # 不同花色的235 > 豹子
         special_235 = [('2', '♥'), ('3', '♦'), ('5', '♠')]
         three_of_a_kind = [('J', '♥'), ('J', '♦'), ('J', '♣')]
-        self.assertGreater(compare_hands(special_235, three_of_a_kind), 0)
-        self.assertLess(compare_hands(three_of_a_kind, special_235), 0)
+        self.assertGreater(compare_hands(special_235, three_of_a_kind, room=self.room), 0)
+        self.assertLess(compare_hands(three_of_a_kind, special_235, room=self.room), 0)
         
         # 235 < 同花顺（因为235与非豹子比较时视为单牌）
         straight_flush = [('A', '♥'), ('K', '♥'), ('Q', '♥')]
@@ -184,20 +189,20 @@ class TestTractorGameLogic(unittest.TestCase):
         # 测试235规则的边界情况
         
         # 启用235大于豹子时
-        room['settings']['is_235_greater_than_three_of_a_kind'] = True
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = True
         
         # 测试不同花色的235与最大的豹子比较
         special_235 = [('2', '♥'), ('3', '♦'), ('5', '♠')]
         three_of_a_kind_ace = [('A', '♥'), ('A', '♦'), ('A', '♣')]  # A的豹子
-        self.assertGreater(compare_hands(special_235, three_of_a_kind_ace), 0)
+        self.assertGreater(compare_hands(special_235, three_of_a_kind_ace, room=self.room), 0)
         
         # 测试相同花色的235（金花）与豹子比较
         flush_235 = [('2', '♥'), ('3', '♥'), ('5', '♥')]
-        self.assertLess(compare_hands(flush_235, three_of_a_kind_ace), 0)  # 金花应小于豹子
+        self.assertLess(compare_hands(flush_235, three_of_a_kind_ace, room=self.room), 0)  # 金花应小于豹子
         
     def test_235_as_high_card_against_non_three_of_a_kind(self):
         # 测试235与非豹子比较时视为单牌的逻辑
-        room['settings']['is_235_greater_than_three_of_a_kind'] = True
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = True
         
         special_235 = [('2', '♥'), ('3', '♦'), ('5', '♠')]
         
@@ -233,7 +238,7 @@ class TestTractorGameLogic(unittest.TestCase):
     
     def test_different_suits_235_comparison(self):
         # 测试多个玩家同时持有不同花色235时的比较逻辑
-        room['settings']['is_235_greater_than_three_of_a_kind'] = True
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = True
         
         # 测试1: 牌面数值相同但花色不同的235
         # 不同花色的235 - 牌面相同但花色不同
@@ -245,9 +250,9 @@ class TestTractorGameLogic(unittest.TestCase):
         
         # 按数值顺序比较花色: 先比较5的花色，再比较3的花色，最后比较2的花色
         # 花色顺序: 红桃 > 梅花 > 方块 > 黑桃
-        self.assertLess(compare_hands(special_235_heart, special_235_club), 0)   # 红桃235 < 梅花235 (因为红桃235中5的花色是方块，梅花235中5的花色是梅花)
-        self.assertGreater(compare_hands(special_235_heart, special_235_spade), 0)   # 红桃235 > 黑桃235
-        self.assertGreater(compare_hands(special_235_club, special_235_spade), 0)    # 梅花235 > 黑桃235
+        self.assertLess(compare_hands(special_235_heart, special_235_club, room=self.room), 0)   # 红桃235 < 梅花235 (因为红桃235中5的花色是方块，梅花235中5的花色是梅花)
+        self.assertGreater(compare_hands(special_235_heart, special_235_spade, room=self.room), 0)   # 红桃235 > 黑桃235
+        self.assertGreater(compare_hands(special_235_club, special_235_spade, room=self.room), 0)    # 梅花235 > 黑桃235
         
         # 测试2: 真正的不同花色组合比较
         # 创建明确不同花色组合的235手牌
@@ -269,16 +274,17 @@ class TestTractorGameLogic(unittest.TestCase):
         special_235_3 = [('5', '♦'), ('2', '♠'), ('3', '♥')]  # 5在最前
         
         # 这三副手牌具有相同的花色组合，只是顺序不同，所以应该相等
-        self.assertEqual(compare_hands(special_235_1, special_235_2), 0)
-        self.assertEqual(compare_hands(special_235_2, special_235_3), 0)
+        self.assertEqual(compare_hands(special_235_1, special_235_2, room=self.room), 0)
+        self.assertEqual(compare_hands(special_235_2, special_235_3, room=self.room), 0)
         
         # 测试3: 验证235的特殊处理逻辑只在rank=7时生效
-        # 禁用235大于豹子时，235应被视为普通顺子(rank=4)
-        room['settings']['is_235_greater_than_three_of_a_kind'] = False
+        # 禁用235大于豹子时，235应被视为普通单牌(rank=1)
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = False
         
-        # 在禁用235大于豹子的情况下，235之间的比较应该是顺子比较逻辑
-        # 此时它们都是顺子，且牌面相同，所以应该相等
-        self.assertEqual(compare_hands(special_235_spade, special_235_club), 0)
+        # 在禁用235大于豹子的情况下，235之间的比较应该是单牌比较逻辑
+        # 此时它们都是单牌，且牌面相同，但花色不同，所以应该按花色比较
+        # 黑桃235 vs 梅花235，梅花 > 黑桃，所以special_235_club > special_235_spade
+        self.assertLess(compare_hands(special_235_spade, special_235_club, room=self.room), 0)
 
     def test_high_card_suit_comparison(self):
         # 测试普通单牌的花色比较逻辑
@@ -359,8 +365,8 @@ class TestTractorGameLogic(unittest.TestCase):
         
         # 启用235大于豹子时，235与非豹子比较时视为单牌，所以牌型顺序为：同花顺 > 豹子 > 顺子 > 金花 > 对子 > 单牌
         # 这里special_235与非豹子比较，所以视为单牌
-        room['settings']['is_235_greater_than_three_of_a_kind'] = True
-        max_index = compare_hands(flush, pair, special_235, high_card)
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = True
+        max_index = compare_hands(flush, pair, special_235, high_card, room=self.room)
         self.assertEqual(max_index, 0)  # 金花最大
         
         # 测试4：5副牌比较 - 全部是235但花色不同
@@ -398,7 +404,7 @@ class TestTractorGameLogic(unittest.TestCase):
         
         # 测试7：多种235的情况（不同花色的235和同花235）
         # 确保在测试7时，235大于豹子的设置为False
-        room['settings']['is_235_greater_than_three_of_a_kind'] = False
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = False
         
         # 不同花色的235
         mixed_suit_235_1 = [('2', '♥'), ('3', '♦'), ('5', '♠')]  # 5是黑桃
@@ -410,12 +416,12 @@ class TestTractorGameLogic(unittest.TestCase):
         # 重要说明：根据app.py中的逻辑，只有不同花色的235会被识别为235特殊牌型（等级1）
         # 同花的235不会被识别为235特殊牌型，而是被评估为金花（等级3）
         # 所以同花235大于非同花235的原因是：金花（等级3）大于单牌（等级1）
-        max_index = compare_hands(mixed_suit_235_1, mixed_suit_235_2, same_suit_235)
+        max_index = compare_hands(mixed_suit_235_1, mixed_suit_235_2, same_suit_235, room=self.room)
         self.assertEqual(max_index, 2)
         
         # 测试8：豹子与多种235的混合比较
         # 当235大于豹子设置启用时
-        room['settings']['is_235_greater_than_three_of_a_kind'] = True
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = True
         three_of_a_kind = [('J', '♥'), ('J', '♦'), ('J', '♣')]  # 豹子
         mixed_suit_235_1 = [('2', '♥'), ('3', '♦'), ('5', '♠')]  # 不同花色235
         same_suit_235 = [('2', '♥'), ('3', '♥'), ('5', '♥')]   # 同花235
@@ -423,14 +429,14 @@ class TestTractorGameLogic(unittest.TestCase):
         
         # 测试非同花235、同花235和豹子的比较顺序
         # 当启用非同花235大于豹子时：非同花235 > 同花235 > 豹子
-        max_index = compare_hands(three_of_a_kind, mixed_suit_235_1, same_suit_235, mixed_suit_235_2)
+        max_index = compare_hands(three_of_a_kind, mixed_suit_235_1, same_suit_235, mixed_suit_235_2, room=self.room)
         self.assertEqual(max_index, 3)  # 非同花235 > 同花235 > 豹子
         
         # 当235小于豹子设置禁用时
-        room['settings']['is_235_greater_than_three_of_a_kind'] = False
+        self.room['settings']['is_235_greater_than_three_of_a_kind'] = False
         
         # 豹子应该大于235
-        max_index = compare_hands(three_of_a_kind, mixed_suit_235_1, same_suit_235)
+        max_index = compare_hands(three_of_a_kind, mixed_suit_235_1, same_suit_235, room=self.room)
         self.assertEqual(max_index, 0)
 
     def test_multi_hands_edge_cases(self):

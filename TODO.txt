@@ -13,3 +13,5 @@ player有status属性，不需要单独设置isReady属性。
 room_manager.py中好多方法都是要根据room_id, player_id先找到player，然后再获取或设置信息，找player的代码可以提取为公用函数
 如果离线的玩家再次上线，通过检查是否弃牌的状态来判断是否重新加入游戏
 RoomKey的ReadPlayers、LastSeatTime、GameData、ContinueGameData是否可以移除？
+比牌的时候要考虑谁先比牌的因素，如果一样大，谁先比，谁输
+

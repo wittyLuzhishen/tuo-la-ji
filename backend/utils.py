@@ -163,7 +163,7 @@ def determine_winner(room_id):
         hands.append(player[PlayerKey.Cards.value])
     
     # 比较手牌
-    winner_index = compare_hands(*hands, room=room)
+    winner_index = compare_hands(*hands)
     winner = active_players[winner_index]
     
     # 分配奖池

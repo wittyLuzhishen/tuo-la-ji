@@ -40,13 +40,13 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 # 注册Socket.IO事件处理函数
 @socketio.on("connect")
 def connect():
-    """处理客户端连接事件"""
+    """处理客户端连接/重连事件"""
     handle_connect()
 
 @socketio.on("disconnect")
-def disconnect():
-    """处理客户端断开连接事件"""
-    handle_disconnect()
+def disconnect(reason):
+    """处理客户端断开连接事件，接收断开原因参数"""
+    handle_disconnect(reason)
 
 @socketio.on("set_username")
 def set_username(data):
@@ -89,7 +89,7 @@ def stand_up(data):
     handle_stand_up(data)
 
 @socketio.on("ready")
-def ready(data):
+def toggle_ready(data):
     """处理玩家准备/取消准备事件"""
     handle_ready(data)
 
@@ -100,7 +100,7 @@ def update_settings(data):
 
 @socketio.on("kick_player")
 def kick_player(data):
-    """处理踢出玩家事件（仅房主可操作）"""
+    """处理踢出玩家事件（仅房主可操作）。即便玩家已经就绪也可以踢出，可以踢出不喜欢的玩家。"""
     handle_kick_player(data)
 
 @socketio.on("start_game")

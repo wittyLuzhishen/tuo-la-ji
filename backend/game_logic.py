@@ -4,6 +4,7 @@
 包含牌型判断和牌型比较等功能
 """
 
+import random
 from game_enum import RoomKey, RoomSettingKey
 
 # 花色和牌面定义
@@ -12,6 +13,43 @@ SUITS_ORDER = {"♥": 4, "♦": 3, "♠": 2, "♣": 1} # 花色顺序：红桃>�
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]  # 扑克牌面
 # 牌面大小映射，用于排序和比较
 RANK_ORDER = {rank: i+2 for i, rank in enumerate(RANKS)}  # 2->2, 3->3, ..., A->14
+
+def create_deck():
+    """
+    创建一副扑克牌
+    返回包含52张牌的列表
+    """
+    deck = []
+    for suit in SUITS:
+        for rank in RANKS:
+            deck.append((rank, suit))
+    return deck
+
+
+def shuffle_deck(deck):
+    """
+    洗牌，
+    返回洗牌后的牌组
+    """
+    random.shuffle(deck)
+    return deck
+
+
+def deal_cards(deck, num_cards=3):
+    """
+    从牌组中发牌，
+    参数：
+        deck: 牌组列表
+        num_cards: 要发的牌数，默认3张
+    返回：
+        发出的牌列表和剩余牌组
+    """
+    if len(deck) < num_cards:
+        return [], deck
+        
+    cards = deck[:num_cards]
+    remaining_deck = deck[num_cards:]
+    return cards, remaining_deck
 
 
 def is_straight_flush(hand, is_A23_as_straight=True):

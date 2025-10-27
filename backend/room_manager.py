@@ -71,7 +71,9 @@ def reset_room_for_new_game(room_id:str, last_winner_id:str)->bool:
     room[RoomKey.Owner.value] = room[RoomKey.Players.value][0][PlayerKey.ID.value]
     room[RoomKey.GameStatus.value] = GameStatus.Wating.value
     #room[RoomKey.Seats.value] = 
-    if last_winner_id and last_winner_id in room[RoomKey.Players.value]:
+    # 提取所有玩家ID到列表中
+    player_ids = [player[PlayerKey.ID.value] for player in room[RoomKey.Players.value]]
+    if last_winner_id and last_winner_id in player_ids:
         room[RoomKey.LastWinner.value] = last_winner_id
     else:
         room[RoomKey.LastWinner.value] = None # 开始游戏时，如果last_winner_id为None，则随机选择庄家
@@ -169,7 +171,7 @@ def create_room(player_id:str, username:str, room_name:str=None)->str:
         PlayerKey.Coins.value: DEFAULT_ROOM_SETTINGS[RoomSettingKey.InitialCoins.value], # 根据房间设置设置
         PlayerKey.Status.value: PlayerStatus.Spectator.value, # 根据房间设置设置
         PlayerKey.Avatar.value: None, #?,
-        PlayerKey.IsOnline.value: True,
+        PlayerKey.OnlineStatus.value: True,
         PlayerKey.Folded.value: False,
     }
     
@@ -214,7 +216,7 @@ def join_room(room_id, player_id, username)->tuple:
         player[PlayerKey.Status.value] = PlayerStatus.Spectator.value
         player[PlayerKey.Username.value] = username
         player[PlayerKey.Coins.value] = room[RoomKey.Settings.value][RoomSettingKey.InitialCoins.value]
-        player[PlayerKey.IsOnline.value] = True
+        player[PlayerKey.OnlineStatus.value] = True
         player[PlayerKey.Folded.value] = False
         return True, f"玩家 {username} 已存在，更新状态为观众，重置金币数"
     
@@ -225,7 +227,7 @@ def join_room(room_id, player_id, username)->tuple:
         PlayerKey.Coins.value: room[RoomKey.Settings.value][RoomSettingKey.InitialCoins.value],
         PlayerKey.Status.value: PlayerStatus.Spectator.value,
         PlayerKey.Avatar.value: None, #?,
-        PlayerKey.IsOnline.value: True,
+        PlayerKey.OnlineStatus.value: True,
         PlayerKey.Folded.value: False,
     }
     
@@ -279,7 +281,7 @@ def update_player_online_status(room_id, player_id, is_online=True):
     if not player:
         return False
         
-    player[PlayerKey.IsOnline.value] = is_online
+    player[PlayerKey.OnlineStatus.value] = is_online
     return True
 
 
@@ -519,7 +521,7 @@ def get_online_players(room_id):
         
     online_players = []
     for player in rooms[room_id][RoomKey.Players.value]:
-        if player[PlayerKey.IsOnline.value]:
+        if player[PlayerKey.OnlineStatus.value]:
             online_players.append(player)
             
     return online_players
@@ -534,7 +536,7 @@ def count_ready_players(room_id):
         
     count = 0
     for player in rooms[room_id][RoomKey.Players.value]:
-        if player[PlayerKey.Status.value] == PlayerStatus.Ready.value and player[PlayerKey.IsOnline.value]:
+        if player[PlayerKey.Status.value] == PlayerStatus.Ready.value and player[PlayerKey.OnlineStatus.value]:
             count += 1
             
     return count

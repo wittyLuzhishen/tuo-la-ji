@@ -27,15 +27,20 @@ class RoomKey(Enum):
 class PlayerKey(Enum):
     """玩家键枚举，对应Room中的Players字典"""
     ID = "id"  # 玩家ID
-    Username = "username"  # 玩家用户名
+    #Username = "username"  # 玩家用户名
+    #Avatar = "avatar"  # 玩家头像URL，类型：str
     Coins = "coins"  # 玩家金币数
     Status = "status"  # 玩家状态，类型：str，值域：PlayerStatus
-    Avatar = "avatar"  # 玩家头像URL，类型：str
-    IsOnline = "is_online"  # 玩家是否在线，类型：bool，玩家恢复连接后设为True
+    OnlineStatus = "online_status"  # 玩家在线类型，类型：str，值域：OnlineStatus
     Cards = "cards"  # 玩家当前手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）
     HasLookedAtCards = "has_looked_at_cards"  # 玩家是否看过牌，类型：bool
-
     Folded = "folded"  # 玩家是否弃牌，类型：bool
+
+class UserKey(Enum):
+    """用户键枚举"""
+    ID = "id"  # 用户ID
+    Username = "username"  # 用户名
+    AvatarURL = "avatar_url"  # 头像URL
 
 class PlayerStatus(Enum):
     """玩家状态枚举"""
@@ -58,7 +63,8 @@ class RoomSettingKey(Enum):
 
 class GameStatus(Enum):
     """游戏状态枚举"""
-    Wating = "waiting" # 等待玩家准备/决策
+    Wating = "waiting" # 等待玩家准备
+    AllReady = "all_ready" # 所有玩家都已准备就绪，即将开始
     Playing = "playing" # 游戏进行中
 
 class RoomStatus(Enum):
@@ -66,11 +72,16 @@ class RoomStatus(Enum):
     Normal = "normal"  # 正常状态
     WaitingToDestroy = "waiting_to_destroy"  # 因为所有的玩家都离线了，等待结束游戏，销毁房间
 
+class OnlineStatus(Enum):
+    """玩家在线状态枚举"""
+    Online = "online"  # 在线状态
+    LostConnection = "lost_connection"  # 失去连接状态
+    Offline = "offline"  # 离线状态，用于指示用户在游戏中主动断开连接的状态
 
 class SessionKey(Enum):
     """会话键枚举"""
-    UserID = "user_id"  # 玩家用户ID
-    Username = "username"  # 玩家用户名
+    #UserID = "user_id"  # 玩家用户ID
+    #Username = "username"  # 玩家用户名
 
 class ClientDataKey(Enum):
     """客户端传来的数据键枚举"""
@@ -83,16 +94,19 @@ class ClientDataKey(Enum):
     AvatarURL = "avatar_url"  # 玩家头像URL，类型：str
     Username = "username"  # 玩家用户名，类型：str
     SeatIndex = "seat_index"  # 玩家座位索引，类型：int
+    PlayerIdToBeKicked = "player_id_to_be_kicked"  # 被踢出玩家ID，类型：str
 
 
 class ServerMessageType(Enum):
     """服务器消息类型枚举"""
-    Connected = "connected"  # 连接消息
+    Connected = "connected"  # 连接/重连成功消息
+    LostConnection = "lost_connection"  # 玩家失去连接消息
+    ReconnectRestore = "reconnect_restore"  # 重新加入房间、载入房间信息消息
     StartTurn = "start_turn"  # 开始回合消息
     GameInfo = "game_info"  # 游戏信息消息
     RoomUpdatedWithPlayerBets = "room_updated_with_player_bets"  # 房间更新玩家下注信息消息
     GameOver = "game_over"  # 游戏结束消息
-    UsernameSet = "username_set"  # 用户名设置消息
+    UserInfoUpdated = "user_info_updated"  # 用户信息更新消息
     Error = "error"  # 错误消息
     RoomCreated = "room_created"  # 房间创建消息
     RoomJoined = "room_joined"  # 房间加入消息
@@ -104,6 +118,8 @@ class ServerMessageType(Enum):
     GameStarted = "game_started"  # 游戏开始消息
     ShowCards = "show_cards"  # 玩家看牌消息
     GameReset = "game_reset"  # 游戏重置消息
+    PlayerLeaved = "player_leaved"  # 玩家离开消息
+    RoomClosed = "room_closed"  # 房间关闭消息
 
 class ServerDataKey(Enum):
     """服务器消息键枚举"""
@@ -113,17 +129,23 @@ class ServerDataKey(Enum):
     RoomID = "room_id"  # 房间ID，类型：str
     Room = "room" # 房间信息，类型：dict
     Players = "players"  # 玩家信息列表，类型：list，每个元素为玩家信息字典，字典键为PlayerKey中的值
-    CurrentTurnPlayerID = "current_turn_player_id"  # 当前轮到行动的玩家ID，类型：str
+    Seats = "seats"  # 座位信息列表，类型：list，每个元素为座位信息字典，字典键为PlayerKey中的值
+    Owner = "owner"  # 房主ID，类型：str，创建房间或有玩家离开时设置
+    Settings = "settings"  # 游戏设置，类型：dict
+    GameStatus = "game_status"  # 游戏状态，类型：str，值域：GameStatus，开始和结束游戏时设置
+    LastWinner = "last_winner"  # 上一局的赢家ID，用于确定下一局的庄家，类型：str，游戏结束时设置
+    GameLog = "game_log"  # 游戏日志，类型：list
     Status = "status"  # 房间状态，类型：str，值域：RoomStatus
     Pot = "pot"  # 奖池金额，类型：int
-    CurrentBet = "current_bet"  # 当前加注金额，类型：int
+    CurrentTurnPlayerID = "current_turn_player_id"  # 当前轮到行动的玩家ID，类型：str
     CurrentRound = "current_round"  # 当前回合数，类型：int
-    GameLog = "game_log"  # 游戏日志，类型：list
-    Settings = "settings"  # 游戏设置，类型：dict
+    CurrentBet = "current_bet"  # 当前加注金额，类型：int
     Winner = "winner"  # 赢家ID，类型：str
     WinnerUsername = "winner_username"  # 赢家用户名，类型：str
     Reason = "reason"  # 游戏结束原因，类型：str
     Username = "username"  # 玩家用户名，类型：str
+    AvatarURL = "avatar_url"  # 玩家头像URL，类型：str
     Message = "message"  # 消息内容，类型：str
     RoomList = "room_list"  # 房间列表消息，类型：list，每个元素为房间信息字典，字典键为RoomKey中的值
     Cards = "cards"  # 玩家手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）
+    GameStatus = "game_status"  # 游戏状态，类型：str，值域：GameStatus，开始和结束游戏时设置

@@ -340,7 +340,7 @@ def next_turn(room_id):
     if not next_turn_player:
         # TODO
         # 检查是否还有在线玩家
-        online_players = [p for p in players_list if p[PlayerKey.IsOnline.value]]
+        online_players = [p for p in players_list if p[PlayerKey.OnlineStatus.value]]
         if not online_players:
             # 没有在线玩家，设置一个定时器，如果一段时间后仍无玩家上线，则结束游戏
             add_game_log(room_id, "所有玩家已离线，游戏将在30秒后自动结束")
@@ -363,7 +363,7 @@ def next_turn(room_id):
                     return
                     
                 # 再次检查是否有在线玩家
-                current_online_players = [p for p in rooms[room_id][RoomKey.Players.value] if p[PlayerKey.IsOnline.value]]
+                current_online_players = [p for p in rooms[room_id][RoomKey.Players.value] if p[PlayerKey.OnlineStatus.value]]
                 if not current_online_players:
                     # 仍然没有在线玩家，结束游戏
                     add_game_log(room_id, "30秒内无玩家重新连接，游戏自动结束")
@@ -410,7 +410,7 @@ def next_turn(room_id):
     emit("start_turn", {
         "player_id": next_turn_player[PlayerKey.ID.value],
         "player_name": next_turn_player[PlayerKey.Username.value],
-        "active_players_count": len([p for p in players_list if not p[PlayerKey.Folded.value] and p[PlayerKey.IsOnline.value]])
+        "active_players_count": len([p for p in players_list if not p[PlayerKey.Folded.value] and p[PlayerKey.OnlineStatus.value]])
     }, room=room_id)
     
     # 广播游戏信息

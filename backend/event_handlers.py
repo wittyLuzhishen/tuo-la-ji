@@ -701,7 +701,7 @@ def handle_start_game(data:dict):
     emit(ServerMessageType.StartTurn.value, {
         ServerDataKey.PlayerID.value: next_turn_player[PlayerKey.ID.value],
         ServerDataKey.PlayerName.value: next_turn_player[PlayerKey.Username.value],
-        ServerDataKey.ActivePlayersCount.value: len([p for p in room[RoomKey.Players.value] if p[PlayerKey.IsOnline.value]])
+        ServerDataKey.ActivePlayersCount.value: len([p for p in room[RoomKey.Players.value] if p[PlayerKey.OnlineStatus.value]])
     }, room=room_id)
     
 
@@ -991,7 +991,7 @@ def handle_showdown(data:dict):
         
     # 检查是否所有玩家都已看牌
     for player in rooms[room_id][RoomKey.Players.value]:
-        if player[PlayerKey.IsOnline.value] and not player[PlayerKey.Folded.value] and not player[PlayerKey.HasLookedAtCards.value]:
+        if player[PlayerKey.OnlineStatus.value] and not player[PlayerKey.Folded.value] and not player[PlayerKey.HasLookedAtCards.value]:
             emit("error", {"message": "还有玩家未看牌，无法开牌"})
             return
     

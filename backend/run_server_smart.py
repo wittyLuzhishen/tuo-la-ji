@@ -54,4 +54,7 @@ if __name__ == "__main__":
     
     # 使用threading模式启动，避免eventlet的兼容性问题
     # 但通过smart_sleep函数保留协程功能的部分优势
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    # 添加allow_unsafe_werkzeug=True以支持在Render等平台部署
+    print("注意: 生产环境强烈建议使用Gunicorn或uWSGI而非直接使用Werkzeug")
+    print("示例: gunicorn --worker-class eventlet -w 1 app:app")
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)

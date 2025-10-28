@@ -1,9 +1,6 @@
+from biz_tuolaji import handle_call, handle_fold, handle_raise, handle_showdown, handle_look_at_cards
 from extensions import socketio
 
-@socketio.on("start_game")
-def start_game(data):
-    """处理开始游戏事件（仅房主可操作）"""
-    handle_start_game(data)
 
 @socketio.on("look_at_cards")
 def look_at_cards(data):

@@ -143,6 +143,7 @@ def create_room(player_id:str, username:str, room_name:str=None)->str:
         PlayerKey.Coins.value: DEFAULT_ROOM_SETTINGS[RoomSettingKey.InitialCoins.value], # 根据房间设置设置
         PlayerKey.Status.value: PlayerStatus.Spectator.value, # 根据房间设置设置
         PlayerKey.OnlineStatus.value: True,
+        PlayerKey.CurrentBet.value: 0,
         # 与牌相关的三个状态变量，等发牌的时候设置
     }
     
@@ -158,7 +159,7 @@ def create_room(player_id:str, username:str, room_name:str=None)->str:
         RoomKey.GameLog.value: [],  # 游戏日志
         RoomKey.Status.value: RoomStatus.Normal.value,  # 房间状态
         RoomKey.Pot.value: 0,  # 当前游戏的总金额
-        RoomKey.CurrentRound.value: 0,  # 当前游戏的轮数
+        RoomKey.CurrentRound.value: 1,  # 当前游戏的轮数
         RoomKey.CurrentBet.value: DEFAULT_ROOM_SETTINGS[RoomSettingKey.BaseBet.value],  # 当前游戏的下注金额
     }
     
@@ -398,6 +399,7 @@ def reset_room_when_game_end(room_id:str):
     # 重置所有玩家的状态
     for player in room[RoomKey.Players.value]:
         player[PlayerKey.Status.value] = PlayerStatus.Seated.value
+        #player[PlayerKey.CurrentBet.value] = 0
         #player[PlayerKey.Cards.value] = None
         #player[PlayerKey.HasLookedAtCards.value] = False
     return True
@@ -431,6 +433,7 @@ def reset_room_for_new_game(room_id:str, continue_players:list, seats:list)->boo
         #player[PlayerKey.Folded.value] = False
         player[PlayerKey.Cards.value] = None
         player[PlayerKey.HasLookedAtCards.value] = False
+        player[PlayerKey.CurrentBet.value] = 0
     # 这句代码是开关，当游戏主循环中检测到所有玩家都准备就绪后，游戏将开始，状态设置会被设置为Playing
     room[RoomKey.GameStatus.value] = GameStatus.AllReady.value
     return True
@@ -452,10 +455,9 @@ def clean_unready_players_from_seats(room_id:str):
     return True
 
 
-def get_playing_players(players:list)->list:
+def get_playing_players(players:list[dict])->list[dict]:
     """
     获取所有正在游戏中的玩家。返回的是玩家的引用，修改返回的列表会影响到原始玩家列表。
     """
     return [player for player in players if player[PlayerKey.Status.value] == PlayerStatus.Playing.value]
-
 

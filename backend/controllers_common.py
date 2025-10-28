@@ -1,7 +1,15 @@
-from extensions import socketio
-from flask import jsonify, render_template, request
+import os
+import uuid
+from flask import jsonify, render_template, request, send_from_directory
+from werkzeug.utils import secure_filename
 
-from biz_common import (allowed_file, handle_connect, handle_continue_game, handle_create_room, handle_get_room_details, handle_get_room_list, handle_join_room, handle_kick_player, handle_leave_room, handle_disconnect, handle_ready, handle_set_avatar, handle_set_userinfo, handle_sit_down, handle_stand_up, handle_update_settings)
+from app import app
+from extensions import socketio
+from biz_common import (allowed_file, handle_connect, handle_continue_game, handle_create_room, 
+    handle_get_room_details, handle_get_room_list, handle_join_room, handle_kick_player, 
+    handle_leave_room, handle_disconnect, handle_ready, handle_set_avatar, handle_set_userinfo, 
+    handle_sit_down, handle_stand_up, handle_update_settings
+)
 
 # 路由定义
 @app.route("/")
@@ -142,8 +150,6 @@ def upload_avatar():
         return jsonify({"url": file_url})
     
     return jsonify({"error": "不支持的文件类型"}), 400
-
-
 
 
 @app.route("/static/avatars/<filename>")

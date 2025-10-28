@@ -1,15 +1,22 @@
 import random
-import eventlet
+# 使用智能sleep函数替代直接导入eventlet
+from builtins import smart_sleep
+eventlet = type('EventletMock', (), {'sleep': smart_sleep})()
 from flask import session
 import uuid
 from flask_socketio import emit, join_room as socketio_join_room, leave_room as socketio_leave_room
 import time
 
-from backend.game_logic import compare_hands, create_deck, deal_cards, shuffle_deck
-from backend.user_dao import get_user_info, set_user_info
-from game_enum import GameStatus, PlayerKey, PlayerStatus, RoomSettingKey, ServerDataKey, SessionKey, RoomKey, RoomStatus, ServerMessageType, OnlineStatus, ClientDataKey, UserKey
-from room_dao import (clean_unready_players_from_seats, create_room, get_player_info, get_playing_players, get_room_list, is_game_started, is_player_turn, is_room_owner, leave_room as leave_room_dao, reset_room_for_new_game, reset_room_when_game_end, rooms, reconnect_timer, find_player_in_room, get_room_by_player_id, seat_player, update_player_folded, 
-    update_player_online_status, get_room_info, join_room as join_room_dao, update_player_status, update_room_settings
+from biz_utils import add_game_log, common_check
+from game_logic import compare_hands, create_deck, deal_cards, shuffle_deck
+from dao_user import get_user_info, set_user_info
+from game_enum import (GameStatus, PlayerKey, PlayerStatus, RoomSettingKey, ServerDataKey, RoomKey, 
+    RoomStatus, ServerMessageType, OnlineStatus, ClientDataKey, UserKey
+)
+from dao_room import (create_room, get_player_info, get_playing_players, get_room_list, is_game_started, 
+    is_player_turn, is_room_owner, leave_room as leave_room_dao, reset_room_for_new_game, reset_room_when_game_end, 
+    rooms, reconnect_timer, find_player_in_room, get_room_by_player_id, seat_player, update_player_online_status, 
+    get_room_info, join_room as join_room_dao, update_player_status, update_room_settings
 )
 from server_message_emitter import broadcast_game_info
 
@@ -20,23 +27,6 @@ INNER_TURN_LOST_RECONNECT_TIMEOUT = 10 # 轮到某玩家行动，但是该玩家
 TURN_TIMEOUT = 20 # 玩家出牌时间秒数，如超时未出牌则视为弃牌
 MIN_SHOW_DOWM_TURN = 1 # 想要比牌，最少经过多少轮
 
-def add_game_log(room_id:str, message:str):
-    """
-    添加游戏日志
-    room_id: 房间ID
-    message: 日志消息
-    """
-    if room_id not in rooms:
-        return
-        
-    rooms[room_id][RoomKey.GameLog.value].append({
-        "message": message,
-        "timestamp": int(time.time() * 1000),  # 使用当前时间的毫秒时间戳
-    })
-    
-    # 限制日志长度
-    if len(rooms[room_id][RoomKey.GameLog.value]) > 100:
-        rooms[room_id][RoomKey.GameLog.value] = rooms[room_id][RoomKey.GameLog.value][-50:]
 
 # Socket.IO事件处理函数
 def handle_connect(data:dict):
@@ -370,34 +360,8 @@ def handle_leave_room(data:dict):
     broadcast_game_info(room_id)
 
 
-def _common_check(user_id:str, room_id:str, check_game_started:bool=True)->dict:
-    if not user_id:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户ID不能为空"})
-        return None
-        
-    if not room_id:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "房间ID不能为空"})
-        return None
-        
-    if room_id not in rooms:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"房间号{room_id}不存在"})
-        return None
-        
-    if check_game_started and is_game_started(room_id):
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "游戏已开始，无法坐下"})
-        return None
-
-    # 查找玩家
-    player = find_player_in_room(room_id, user_id)[0]
-    if not player:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"{user_id}不在房间{room_id}中"})
-        return None
-    
-    return player
-
-
 def _handle_sit_donw_or_up(user_id:str, room_id:str, is_sit_down:bool, seat_index:int)->bool:
-    player = _common_check(user_id, room_id)
+    player = common_check(user_id, room_id, should_game_started=False)
     if not player:
         return False
 
@@ -455,7 +419,7 @@ def handle_ready(data:dict):
     
         
     # 查找玩家
-    player = _common_check(room_id, user_id)
+    player = common_check(user_id, room_id, should_game_started=False)
     if not player:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"您不在房间{room_id}中"})
         return False
@@ -734,7 +698,7 @@ def handle_update_settings(data:dict):
     room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     settings = data.get(ClientDataKey.Settings.value, None)
     
-    player = _common_check(user_id, room_id)
+    player = common_check(user_id, room_id, should_game_started=False)
     if not player:
         return False
 
@@ -766,7 +730,7 @@ def handle_kick_player(data:dict):
     room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     to_be_kicked_player_id = data.get(ClientDataKey.PlayerIdToBeKicked.value, "").strip()
     
-    player = _common_check(user_id, room_id)
+    player = common_check(user_id, room_id, should_game_started=False)
     if not player:
         return False        
         
@@ -807,7 +771,7 @@ def handle_continue_game(data:dict):
     room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     continue_game = data.get(ClientDataKey.ContinueGame.value, False)
     
-    player = _common_check(user_id, room_id, check_game_started=False)
+    player = common_check(user_id, room_id, should_game_started=False)
     if not player:
         return False
         

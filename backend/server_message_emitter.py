@@ -1,5 +1,5 @@
 from game_enum import ServerMessageType, ServerDataKey, RoomKey, PlayerKey
-from game_dao import rooms, get_player_info
+from dao_room import rooms, get_player_info
 from flask_socketio import emit
 
 def broadcast_game_info(room_id):

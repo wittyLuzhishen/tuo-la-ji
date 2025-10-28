@@ -13,7 +13,7 @@ class RoomKey(Enum):
     Pot = "pot"  # 奖池金额，类型：int
     CurrentTurnPlayerID = "current_turn_player_id"  # 当前轮到行动的玩家ID，类型：str
     CurrentRound = "current_round"  # 当前回合数，类型：int
-    CurrentBet = "current_bet"  # 当前下注金额，类型：int
+    CurrentBet = "current_bet"  # 当前房间下注金额，类型：int
     ID = "id" # 房间ID，类型：str
     Name = "name"  # 房间名称，类型：str
     PlayerCount = "player_count" # 房间当前玩家数，类型：int
@@ -31,6 +31,7 @@ class PlayerKey(Enum):
     #Avatar = "avatar"  # 玩家头像URL，类型：str
     Status = "status"  # 玩家状态，类型：str，值域：PlayerStatus
     OnlineStatus = "online_status"  # 玩家在线类型，类型：str，值域：OnlineStatus
+    CurrentBet = "current_bet"  # 玩家当前累计下注金额，类型：int
     Coins = "coins"  # 玩家金币数，类型：int
     Cards = "cards"  # 玩家当前手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）
     HasLookedAtCards = "has_looked_at_cards"  # 玩家是否看过牌，类型：bool
@@ -89,12 +90,13 @@ class ClientDataKey(Enum):
     Ready = "ready"  # 准备状态，类型：bool
     Settings = "settings"  # 游戏设置，类型：dict
     PlayerID = "player_id"  # 玩家ID，类型：str
-    Amount = "amount"  # 加注金额，类型：int
+    AddAmount = "add_amount"  # 加注金额，类型：int
     ContinueGame = "continue"  # 继续游戏选择，类型：bool
     AvatarURL = "avatar_url"  # 玩家头像URL，类型：str
     Username = "username"  # 玩家用户名，类型：str
     SeatIndex = "seat_index"  # 玩家座位索引，类型：int
     PlayerIdToBeKicked = "player_id_to_be_kicked"  # 被踢出玩家ID，类型：str
+    PlayerIdToBeShowdown = "player_id_to_be_showdown"  # 被开牌玩家ID，类型：str
 
 
 class ServerMessageType(Enum):
@@ -150,4 +152,5 @@ class ServerDataKey(Enum):
     Message = "message"  # 消息内容，类型：str
     RoomList = "room_list"  # 房间列表消息，类型：list，每个元素为房间信息字典，字典键为RoomKey中的值
     Cards = "cards"  # 玩家手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）
-    AvatarURL = "avatar_url"  # 玩家头像URL，类型：str
+    CallAmount = "call_amount"  # 玩家加注金额，类型：int
+    RaiseAmount = "raise_amount"  # 玩家选择加注，之后付出的注数，类型：int

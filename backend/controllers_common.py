@@ -1,7 +1,7 @@
 from extensions import socketio
-from flask import render_template, request
+from flask import jsonify, render_template, request
 
-from biz_common import (handle_connect, handle_continue_game, handle_create_room, handle_get_room_details, handle_get_room_list, handle_join_room, handle_kick_player, handle_leave_room, handle_disconnect, handle_ready, handle_set_userinfo, handle_sit_down, handle_stand_up, handle_update_settings)
+from biz_common import (allowed_file, handle_connect, handle_continue_game, handle_create_room, handle_get_room_details, handle_get_room_list, handle_join_room, handle_kick_player, handle_leave_room, handle_disconnect, handle_ready, handle_set_avatar, handle_set_userinfo, handle_sit_down, handle_stand_up, handle_update_settings)
 
 # 路由定义
 @app.route("/")
@@ -26,70 +26,84 @@ def connect(data):
     """处理客户端连接/重连事件"""
     handle_connect(data)
 
+
 @socketio.on("disconnect")
 def disconnect(data):
     """处理客户端断开连接事件，接收断开原因参数"""
     handle_disconnect(request.args.get("reason", ""), data)
+
 
 @socketio.on("set_userinfo")
 def set_userinfo(data):
     """处理设置用户信息事件"""
     handle_set_userinfo(data)
 
+
 @socketio.on("get_room_list")
 def get_room_list():
     """处理获取房间列表事件"""
     handle_get_room_list()
+
 
 @socketio.on("get_room_details")
 def get_room_details(data):
     """处理获取房间详情事件"""
     handle_get_room_details(data)
 
+
 @socketio.on("create_room")
 def create_room(data):
     """处理创建房间事件"""
     handle_create_room(data)
+
 
 @socketio.on("join_room")
 def join_room(data):
     """处理加入房间事件"""
     handle_join_room(data)
 
+
 @socketio.on("leave_room")
 def leave_room(data):
     """处理离开房间事件"""
     handle_leave_room(data)
+
 
 @socketio.on("sit_down")
 def sit_down(data):
     """处理玩家坐下事件"""
     handle_sit_down(data)
 
+
 @socketio.on("stand_up")
 def stand_up(data):
     """处理玩家站起事件"""
     handle_stand_up(data)
+
 
 @socketio.on("ready")
 def toggle_ready(data):
     """处理玩家准备/取消准备事件"""
     handle_ready(data)
 
+
 @socketio.on("update_settings")
 def update_settings(data):
     """处理更新房间设置事件（仅房主可操作）"""
     handle_update_settings(data)
+
 
 @socketio.on("kick_player")
 def kick_player(data):
     """处理踢出玩家事件（仅房主可操作）。即便玩家已经就绪也可以踢出，可以踢出不喜欢的玩家。"""
     handle_kick_player(data)
 
+
 @socketio.on("continue_game")
 def continue_game(data):
     """处理游戏继续/退出选择"""
     handle_continue_game(data)
+
 
 @socketio.on("set_avatar")
 def set_avatar(data):
@@ -128,6 +142,8 @@ def upload_avatar():
         return jsonify({"url": file_url})
     
     return jsonify({"error": "不支持的文件类型"}), 400
+
+
 
 
 @app.route("/static/avatars/<filename>")

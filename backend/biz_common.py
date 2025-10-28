@@ -1,20 +1,24 @@
+import random
 import eventlet
 from flask import session
 import uuid
 from flask_socketio import emit, join_room as socketio_join_room, leave_room as socketio_leave_room
 import time
 
-from backend.game_logic import create_deck, deal_cards, shuffle_deck
-from backend.user_dao import set_user_info
+from backend.game_logic import compare_hands, create_deck, deal_cards, shuffle_deck
+from backend.user_dao import get_user_info, set_user_info
 from game_enum import GameStatus, PlayerKey, PlayerStatus, RoomSettingKey, ServerDataKey, SessionKey, RoomKey, RoomStatus, ServerMessageType, OnlineStatus, ClientDataKey, UserKey
-from room_dao import (clean_unready_players_from_seats, create_room, get_player_info, get_room_list, is_game_started, is_player_turn, is_room_owner, leave_room as leave_room_dao, reset_room_for_new_game, rooms, reconnect_timer, find_player_in_room, get_room_by_player_id, seat_player, update_player_folded, 
+from room_dao import (clean_unready_players_from_seats, create_room, get_player_info, get_playing_players, get_room_list, is_game_started, is_player_turn, is_room_owner, leave_room as leave_room_dao, reset_room_for_new_game, reset_room_when_game_end, rooms, reconnect_timer, find_player_in_room, get_room_by_player_id, seat_player, update_player_folded, 
     update_player_online_status, get_room_info, join_room as join_room_dao, update_player_status, update_room_settings
 )
 from server_message_emitter import broadcast_game_info
 
 LOST_RECONNECT_TIMEOUT = 30 # 掉线重连等待秒数，如超时未重连则视为彻底断开连接
 CONTINUE_NEW_GAME_TIMER = "continue_new_game_timer" # 继续游戏定时器名称
-TURN_TIME = 20 # 玩家出牌时间秒数，如超时未出牌则视为弃牌
+CONTINUE_NEW_GAME_TIMEOUT = 10 # 继续游戏定时器超时秒数
+INNER_TURN_LOST_RECONNECT_TIMEOUT = 10 # 轮到某玩家行动，但是该玩家掉线了，等待他上限的秒数
+TURN_TIMEOUT = 20 # 玩家出牌时间秒数，如超时未出牌则视为弃牌
+MIN_SHOW_DOWM_TURN = 1 # 想要比牌，最少经过多少轮
 
 def add_game_log(room_id:str, message:str):
     """
@@ -138,18 +142,14 @@ def handle_disconnect(reason:str, data:dict):
         if not room_id:
             print(f"用户{user_id}不在任何房间中，在大厅里主动断开连接")
         else:
-            update_player_online_status(room_id, user_id, OnlineStatus.Offline)
             _leave_room(room_id, user_id)
-            # 离开Socket.IO通信房间
-            socketio_leave_room(room_id, user_id)
             print(f"用户{user_id}在房间{room_id}中，主动断开连接")
             # 添加离开房间的日志
             add_game_log(room_id, f"{user_id} 主动离开，已移出房间{room_id}")
     else: # 网络原因导致断线，加入重连倒计时
         if room_id:
             update_player_online_status(room_id, user_id, OnlineStatus.LostConnection)
-        timer = eventlet.spawn_after(LOST_RECONNECT_TIMEOUT, _clean_lost_player, user_id, room_id)
-        reconnect_timer[user_id] = timer
+        reconnect_timer[user_id] = eventlet.spawn_after(LOST_RECONNECT_TIMEOUT, _clean_lost_player, user_id, room_id)
         emit(ServerMessageType.LostConnection.value, {"user_id": user_id})
     
     # 广播游戏信息，更新其他玩家看到的状态
@@ -164,11 +164,9 @@ def _clean_lost_player(user_id:str, room_id:str):
     if user_id in reconnect_timer:
         reconnect_timer.pop(user_id)
     
-    
     # 从房间中移除玩家
-    leave_room(room_id, user_id)
-    print(f"已将用户{user_id}移出房间{room_id}")
-    
+    _leave_room(room_id, user_id)
+    add_game_log(room_id, f"{user_id} 超时未重连成功，已移出房间{room_id}")
     # 广播游戏信息，更新其他玩家看到的状态
     broadcast_game_info(room_id)
 
@@ -182,7 +180,7 @@ def _join_room(room_id, user_id, reconnect=False)->tuple:
     max_player_number = rooms[room_id][RoomKey.Settings.value][RoomSettingKey.MaxPlayerNumber.value]
     if not reconnect and max_player_number <= len(rooms[room_id][RoomKey.Players.value]):
         return False, "房间已满"
-    socketio_join_room(room_id, user_id)
+    socketio_join_room(room=room_id, sid=user_id)
     print(f"用户{user_id}加入房间{room_id}，是否重连：{reconnect}")
     if reconnect:
         update_player_online_status(room_id, user_id, OnlineStatus.Online)
@@ -209,19 +207,23 @@ def _leave_room(room_id:str, user_id:str):
     # 检查玩家是否在房间中
     player, _ = find_player_in_room(room_id, user_id)
     if not player:
-        return
-    
+        return False
+        
     # 检查玩家是否是当前回合玩家
     if is_player_turn(room_id, user_id):
         # 自动弃牌并进入下一个玩家
-        update_player_folded(room_id, user_id, True)
+        update_player_status(room_id, user_id, PlayerStatus.Folded)
     
+    update_player_online_status(room_id, user_id, OnlineStatus.Offline)
     # 从房间中移除玩家
     leave_room_dao(room_id, user_id)
+    # 离开Socket.IO通信房间
+    socketio_leave_room(room=room_id, sid=user_id)
     print(f"已将用户{user_id}移出房间{room_id}")
     
     # 广播游戏信息，更新其他玩家看到的状态
     broadcast_game_info(room_id)
+    return True
 
 
 def handle_set_userinfo(data: dict):
@@ -457,7 +459,10 @@ def handle_ready(data:dict):
     if not player:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"您不在房间{room_id}中"})
         return False
-        
+    if player[PlayerKey.Coins.value] < rooms[room_id][RoomKey.Settings.value][RoomSettingKey.BaseBet.value]*MIN_SHOW_DOWM_TURN:
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"您的金币余额不足"})
+        return False
+    
     if turn_ready and player[PlayerKey.Status.value] != PlayerStatus.Seated.value:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"玩家状态为：{player[PlayerKey.Status.value]}，无法准备"})
         return False
@@ -471,12 +476,33 @@ def handle_ready(data:dict):
     # 广播游戏信息
     broadcast_game_info(room_id)
     # 检查是否所有玩家都已准备就绪
+    check_for_new_game(room_id)
+
+
+def check_for_new_game(room_id:str):
+    """
+    检查房间是否可以开始新游戏
+    """
     room = rooms[room_id]
-    if all(player[PlayerKey.Status.value] == PlayerStatus.Ready.value for player in room[RoomKey.Players.value]):
-        # 所有玩家都已准备就绪，游戏开始
-        room[RoomKey.GameStatus.value] = GameStatus.AllReady.value
-        eventlet.spawn(start_game_loop, room_id)
-        broadcast_game_info(room_id)
+    if room[RoomKey.GameStatus.value] != GameStatus.Playing.value:
+        return False
+    if not all(player[PlayerKey.Status.value] == PlayerStatus.Ready.value for player in room[RoomKey.Players.value]):
+        return False
+    continue_players = [p for p in room[RoomKey.Players.value] if p[PlayerKey.Status.value] == PlayerStatus.Ready.value]
+    if len(continue_players) < 2:
+        for player in continue_players:
+            _leave_room(room_id, player[PlayerKey.ID.value])
+        print(f"房间{room_id}即将解散，因为只有 {len(continue_players)} 人选择继续游戏")
+        del rooms[room_id]
+        emit(ServerMessageType.RoomClosed.value, {ServerDataKey.RoomID.value: room_id}, room=room_id)
+        socketio_leave_room(room=room_id)
+        return False
+    # 所有玩家都已准备就绪，游戏开始
+    # 重置房间状态
+    reset_room_for_new_game(room_id, room[RoomKey.Players.value], room[RoomKey.Seats.value])
+    eventlet.spawn(start_game_loop, room_id)
+    broadcast_game_info(room_id)
+    return True
 
 
 def start_game_loop(room_id:str):
@@ -493,31 +519,70 @@ def start_game_loop(room_id:str):
     # 更新玩家状态为Playing，为每个玩家发送牌信息
     for player in room[RoomKey.Players.value]:
         player[PlayerKey.Status.value] = PlayerStatus.Playing.value
-        emit(ServerMessageType.GameStarted.value, get_player_info(room_id, player[PlayerKey.ID.value], True))
+        emit(ServerMessageType.GameStarted.value, get_player_info(room_id, player[PlayerKey.ID.value], True), room=room_id)
     
-    next_player_index = get_next_player_seat_index(room[RoomKey.Seats.value], room[RoomKey.LastWinner])
+    next_player_index = get_next_player_seat_index(room, room[RoomKey.LastWinner], None)
+    first_player_index = next_player_index
     # 游戏主循环
     while room[RoomKey.GameStatus.value] == GameStatus.Playing.value:
+        # 判断当局游戏是否可以结束
+        if check_current_game_end(room):
+            settle(room)
+            # 在重置游戏状态前进行广播
+            reset_room_when_game_end(room_id)
+            broadcast_game_info(room_id)
+            break
+        
         # 游戏逻辑
-        current_turn_player_id = get_next_playing_player(room[RoomKey.Seats.value], room_id, next_player_index)
-        # 如果玩家行动，则会改变当前回合玩家
+        current_turn_player_id = get_next_online_playing_player(room[RoomKey.Seats.value], room_id, next_player_index)
+        if not current_turn_player_id:
+            print(f"在所有玩家中，没有找到在线的、未弃牌的玩家")
+            continue
+
         room[RoomKey.CurrentTurnPlayerID.value] = current_turn_player_id
+        current_turn_player = find_player_in_room(room_id, current_turn_player_id)[0]
+        if not current_turn_player:
+            print(f"在所有玩家中，没有找到玩家{current_turn_player_id}")
+            continue
+        player_last_coins = current_turn_player[PlayerKey.Coins.value]
         # 向玩家发送轮到行动的消息
         emit(ServerMessageType.StartTurn.value, {ServerDataKey.PlayerID.value: current_turn_player_id})
-        # 等待玩家行动结束或超时，如果玩家行动，则会改变当前回合玩家
+        
+        is_player_action_done = False
         start_time = time.time()
-        while time.time() - start_time < TURN_TIME:
+        while time.time() - start_time < TURN_TIMEOUT:
             # 检查玩家是否行动
-            if check_player_action_done(room, current_turn_player_id):
+            if check_player_action_done(room_id, current_turn_player_id, player_last_coins):
+                is_player_action_done = True
                 break
             eventlet.sleep(0.2)
-        # 判断当局游戏是否可以结束
-        check_current_game_end(room, current_turn_player_id)
-        pass
+        if not is_player_action_done:
+            # 玩家超时未行动，视为弃牌
+            update_player_status(room_id, current_turn_player_id, PlayerStatus.Folded.value)
+            emit(ServerMessageType.PlayerFolded.value, {ServerDataKey.PlayerID.value: current_turn_player_id})
 
-    next_player_index = get_next_player_seat_index(room[RoomKey.Seats.value], current_turn_player_id)
-    # 游戏结束
+        next_player_index = get_next_player_seat_index(room, current_turn_player_id, first_player_index)
+    # 一局游戏结束
+    
+    # 等待玩家决定是否继续游戏
+    room.continue_new_game_timer = eventlet.spawn_after(CONTINUE_NEW_GAME_TIMEOUT, clean_no_ready_player, room_id)
     broadcast_game_info(room_id)
+
+
+def clean_no_ready_player(room_id:str):
+    """
+    清除房间中未准备就绪的玩家
+    """
+    if room_id not in rooms:
+        return
+    room = rooms[room_id]
+    if not hasattr(room, CONTINUE_NEW_GAME_TIMER):
+        return
+    room.continue_new_game_timer.cancel()
+    del room.continue_new_game_timer
+    for player in room[RoomKey.Players.value]:
+        if player[PlayerKey.Status.value] != PlayerStatus.Ready.value:
+            _leave_room(room_id, player[PlayerKey.ID.value])
 
 
 def deal_cards_to_players(room_id:str):
@@ -549,7 +614,19 @@ def deal_cards_to_players(room_id:str):
     return True
 
 
-def get_next_playing_player(seats:list, room_id:str, start_player_index:int)->str:
+def get_next_player_seat_index(room, current_turn_player_id, first_player_index):
+    """
+    获取下一个未被弃牌的玩家座位索引
+    """
+    seats = room[RoomKey.Seats.value]
+    current_turn_player_seat_index = seats.index(current_turn_player_id)
+    next_index = (current_turn_player_seat_index + 1) % len(seats)
+    if next_index == first_player_index:
+        room[RoomKey.CurrentRound] += 1
+    return next_index
+
+
+def get_next_online_playing_player(seats:list, room_id:str, start_player_index:int)->str:
     """
     获取下一个未被弃牌的玩家ID
     """
@@ -557,40 +634,96 @@ def get_next_playing_player(seats:list, room_id:str, start_player_index:int)->st
         player_id = seats[(start_player_index + i) % len(seats)]
         player = find_player_in_room(room_id, player_id)[0]
         if player is None:
-            raise ValueError(f"玩家{player_id}不在房间{room_id}中")
+            print(f"玩家{player_id}不在房间{room_id}中")
         if player[PlayerKey.Status.value] == PlayerStatus.Playing.value:
             if player[PlayerKey.OnlineStatus.value] == OnlineStatus.Online.value:
                 return player_id
+            elif player[PlayerKey.OnlineStatus.value] == OnlineStatus.LostConnection.value:
+                start_time = time.time()
+                while time.time() - start_time < INNER_TURN_LOST_RECONNECT_TIMEOUT:
+                    player = find_player_in_room(room_id, player_id)[0]
+                    if player is None:
+                        print(f"玩家{player_id}不在房间{room_id}中")
+                        break
+                    if player[PlayerKey.Status.value] == PlayerStatus.Playing.value \
+                        and player[PlayerKey.OnlineStatus.value] == OnlineStatus.Online.value:
+                        return player_id
+                    eventlet.sleep(0.2)
+
+                player = find_player_in_room(room_id, player_id)[0]
+                if player is not None:
+                    player[PlayerKey.Status.value] = PlayerStatus.Folded.value
 
     return None
 
 
-def get_next_player_seat_index(seats, current_turn_player_id):
-    """
-    获取下一个未被弃牌的玩家座位索引
-    """
-    current_turn_player_seat_index = seats.index(current_turn_player_id)
-    return (current_turn_player_seat_index + 1) % len(seats)
-
-
-def check_player_action_done(room, current_turn_player_id):
+def check_player_action_done(room_id:str, current_turn_player_id:str, player_last_coins:int):
     """
     检查玩家是否完成行动
     """
-    next_player_seat_index = get_next_player_seat_index(room[RoomKey.Seats.value], current_turn_player_id)
-    next_player_id = get_next_playing_player(room[RoomKey.Seats.value], room[RoomKey.ID.value], next_player_seat_index)
-    if room[RoomKey.CurrentTurnPlayerID.value] == next_player_id:
+    # 从房间中获取玩家
+    player = find_player_in_room(room_id, current_turn_player_id)[0]
+    if player is None:
+        print(f"玩家{current_turn_player_id}不在房间{room_id}中")
+        return True
+    
+    # 如果玩家的金币减少了或玩家弃牌，则视为行动完成
+    if player[PlayerKey.Coins.value] < player_last_coins \
+        or player[PlayerKey.Status.value] == PlayerStatus.Folded.value:
         return True
     return False
 
 
-def check_current_game_end(room, current_turn_player_id):
+def check_current_game_end(room):
     """
-    检查当局游戏是否可以结束
+    检查当局游戏是否可以结束。如果所有玩家离线且在 达到手数（轮数）上限、达到奖池上限或只剩一个玩家没有弃牌，则游戏结束。
     """
-    # 检查是否只剩一个玩家没有弃牌
+    # 检查是否达到手数（轮数）上限
+    if room[RoomKey.CurrentRound.value] >= room[RoomKey.Settings.value][RoomSettingKey.MaxRounds.value]:
+        return True
+    # 检查是否达到奖池上限
+    if room[RoomKey.Pot.value] >= room[RoomKey.Settings.value][RoomSettingKey.MaxPotAmount.value]:
+        return True
+    # 检查是否最多只剩一个玩家没有弃牌
+    players = room[RoomKey.Players.value]
+    playing_players = get_playing_players(players)
+    if len(playing_players) <= 1:
+        return True
 
     return False
+
+
+def settle(room:str):
+    """游戏结算，更新金币。"""
+    # 找到游戏赢家
+    playing_players = get_playing_players(room[RoomKey.Players.value])
+    if len(playing_players) == 0:
+        print("本局无赢家")
+        room[RoomKey.LastWinner.value] = None
+        room[RoomKey.Pot.value] = 0 
+        return
+    winner_player_list:list = []
+    if len(playing_players) == 1:
+        winner_player_list.append(playing_players[0])
+    else:
+        # 比较玩家的牌的大小
+        card_list = [player[PlayerKey.Cards.value] for player in playing_players]
+        winner_hand_index_list = compare_hands(card_list, raise_compare_hand_index=None, 
+            isDiffentSuit235GreaterThanThreeOfAKind=room[RoomKey.Settings.value][RoomSettingKey.IsDiffentSuit235GreaterThanThreeOfAKind.value], 
+            is_A23_as_straight=room[RoomKey.Settings.value][RoomSettingKey.IsA23AsStraight.value]
+        )
+        for winner_hand_index in winner_hand_index_list:
+            winner_player_list.append(playing_players[winner_hand_index])
+
+    # 如果有多个赢家，随机选择一个
+    room[RoomKey.LastWinner.value] = winner_player_list[random.randint(0, len(winner_player_list) - 1)][PlayerKey.ID.value]
+    # 计算每个赢家的金币奖励
+    pot_amount = room[RoomKey.Pot.value]
+    # 除不尽的金币丢弃
+    winner_coins = pot_amount // len(winner_player_list)
+    for winner_player in winner_player_list:
+        winner_player[PlayerKey.Coins.value] += winner_coins
+    room[RoomKey.Pot.value] = 0 
 
 
 def handle_update_settings(data:dict):
@@ -682,161 +815,50 @@ def handle_continue_game(data:dict):
     if not continue_game:
         # 玩家选择不继续游戏，从房间中移除
         _leave_room(room_id, user_id)
-        socketio_leave_room(room=room_id, sid=user_id)
-        # 广播游戏信息
-        broadcast_game_info(room_id)
         return
         
-    update_player_online_status(room_id, user_id, PlayerStatus.Ready.value)
+    update_player_status(room_id, user_id, PlayerStatus.Ready.value)
     
     # 广播游戏信息
     broadcast_game_info(room_id)
-    
-    # 处理游戏继续决策
-    try_start_new_game_if_all_decided(room_id)
+
+    check_for_new_game(room_id)
 
 
-def try_start_new_game_if_all_decided(room_id):
+def handle_set_avatar(data:dict):
     """
-    当所有还在房间中的玩家都已做出选择（包括离线玩家），尝试开始新一局游戏。
-    如果同意继续新一局游戏的人数不足2人，将解散房间
+    处理设置头像事件
     """
-    if room_id not in rooms:
-        return False
-    room = rooms[room_id]
-    # 获取所有玩家，而不仅仅是在线玩家
-    all_players = room[RoomKey.Players.value]
+    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
+    avatar_url = data.get(ClientDataKey.AvatarURL.value, "").strip()
     
-    # 检查是否所有玩家都已做出选择（状态为ready或已离开）
-    all_decided = True
-    for p in all_players:
-        # 当一局游戏结束后，玩家的状态为Seated，如果玩家选择继续，状态为Ready，否则玩家会被移出房间
-        if p[PlayerKey.Status.value] != PlayerStatus.Ready.value:
-            all_decided = False
-            break
-    
-    # 如果此时还是有玩家没有做出选择，无法开始下一局游戏
-    if not all_decided:
-        return False
-    
-    # TODO 取消继续游戏定时器
-    if hasattr(room, CONTINUE_NEW_GAME_TIMER):
-        room.continue_new_game_timer = None
-
-    # 统计选择继续的玩家（包括目前离线的玩家）
-    continue_players = [p for p in all_players if p[PlayerKey.Status.value] == PlayerStatus.Ready.value]
-    clean_unready_players_from_seats(room_id)
-        
-    if len(continue_players) >= 2:  # 至少需要2个玩家才能继续游戏
-        # 重置房间状态
-        reset_room_for_new_game(room_id, continue_players, room[RoomKey.Seats.value])
-        
-        # 广播游戏信息
-        broadcast_game_info(room_id)
-        
-        emit(ServerMessageType.GameReset.value, {ServerDataKey.RoomID.value: room_id}, room=room_id)
-        # 即将开始新一局游戏
-        return True
-    else:
-        print(f"房间{room_id}即将解散，因为只有 {len(continue_players)} 人选择继续游戏")
-        del rooms[room_id]
-        emit(ServerMessageType.RoomClosed.value, {ServerDataKey.RoomID.value: room_id}, room=room_id)
-        socketio_leave_room(room=room_id)
-        return True
-
-
-
-
-
-
-# TODO
-def next_turn(room_id):
-    """
-    进入下一个玩家的回合
-    """
-    if room_id not in rooms:
+    if not user_id:
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户未登录"})
         return
+    if not avatar_url:
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "头像URL不能为空"})
+        return
+
         
-    room = rooms[room_id]
-    
-    # 找到下一个在座位上的、在线的玩家
-    next_turn_player, next_turn_index = find_next_seated_and_online_player(room[RoomKey.Seats.value], room_owner_id)
-    # 如果所有玩家都已弃牌或离线，结束游戏
-    if not next_turn_player:
-        # TODO
-        # 检查是否还有在线玩家
-        online_players = [p for p in players_list if p[PlayerKey.OnlineStatus.value]]
-        if not online_players:
-            # 没有在线玩家，设置一个定时器，如果一段时间后仍无玩家上线，则结束游戏
-            add_game_log(room_id, "所有玩家已离线，游戏将在30秒后自动结束")
-            
-            # 设置房间状态为等待结束
-            room[RoomKey.Status.value] = RoomStatus.WaitingToDestroy.value
-            
-            # 设置定时器，30秒后检查是否还有玩家上线
-            import threading
-            def check_players_online():
-                import time
-                time.sleep(30)  # 等待30秒
-                
-                # 检查房间是否还存在
-                if room_id not in rooms:
-                    return
-                    
-                # 检查房间状态
-                if rooms[room_id][RoomKey.Status.value] != RoomStatus.WaitingToDestroy.value:
-                    return
-                    
-                # 再次检查是否有在线玩家
-                current_online_players = [p for p in rooms[room_id][RoomKey.Players.value] if p[PlayerKey.OnlineStatus.value]]
-                if not current_online_players:
-                    # 仍然没有在线玩家，结束游戏
-                    add_game_log(room_id, "30秒内无玩家重新连接，游戏自动结束")
-                    end_game(room_id)
-                else:
-                    # 有玩家重新连接，恢复游戏状态
-                    rooms[room_id][RoomKey.Status.value] = RoomStatus.PLAYING.value
-                    add_game_log(room_id, "有玩家重新连接，游戏继续")
-            
-            # 启动定时器线程
-            timer_thread = threading.Thread(target=check_players_online)
-            timer_thread.daemon = True
-            timer_thread.start()
-            
-            return
-        else:
-            # 所有在线玩家都已弃牌，结束游戏
-            determine_winner(room_id)
-            return
+    # 更新玩家头像
+    user_info = get_user_info(user_id)
+    if not user_info:
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户不存在"})
         return
     
-    # 设置到达了玩家的回合
-    set_current_turn_player(room_id, next_turn_player[PlayerKey.ID.value])
-    
-    # 检查下一个玩家是否有足够的金币跟注
-    if next_turn_player[PlayerKey.Coins.value] < room[RoomKey.CurrentBet.value]:
-        # 如果金币不足，自动弃牌
-        next_turn_player[PlayerKey.Folded.value] = True
-        
-        # 添加游戏日志
-        room[RoomKey.GameLog.value].append({
-            "message": f"{next_turn_player[PlayerKey.Username.value]} 金币不足，自动弃牌",
-            "timestamp": str(uuid.uuid4()),
-        })
-        
-        # 继续下一个玩家
-        next_turn(room_id)
-        return
-    
-    # 设置下一个玩家
-    set_current_turn_player(room_id, next_turn_player[PlayerKey.ID.value])
-    
-    # 发送start_turn事件，通知前端当前回合玩家
-    emit("start_turn", {
-        "player_id": next_turn_player[PlayerKey.ID.value],
-        "player_name": next_turn_player[PlayerKey.Username.value],
-        "active_players_count": len([p for p in players_list if not p[PlayerKey.Folded.value] and p[PlayerKey.OnlineStatus.value]])
-    }, room=room_id)
-    
-    # 广播游戏信息
-    broadcast_game_info(room_id)
+    # 更新用户头像
+    user_info[UserKey.AvatarURL.value] = avatar_url
+    set_user_info(user_id, user_info)
+
+    emit(ServerMessageType.AvatarSet.value, {ServerDataKey.PlayerID.value: user_id, ServerDataKey.AvatarURL.value: avatar_url})
+
+
+def allowed_file(filename):
+    """
+    检查文件是否为允许的图片类型
+    """
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+

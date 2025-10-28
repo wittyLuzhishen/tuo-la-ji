@@ -29,12 +29,12 @@ class PlayerKey(Enum):
     ID = "id"  # 玩家ID
     #Username = "username"  # 玩家用户名
     #Avatar = "avatar"  # 玩家头像URL，类型：str
-    Coins = "coins"  # 玩家金币数
     Status = "status"  # 玩家状态，类型：str，值域：PlayerStatus
     OnlineStatus = "online_status"  # 玩家在线类型，类型：str，值域：OnlineStatus
+    Coins = "coins"  # 玩家金币数，类型：int
     Cards = "cards"  # 玩家当前手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）
     HasLookedAtCards = "has_looked_at_cards"  # 玩家是否看过牌，类型：bool
-    Folded = "folded"  # 玩家是否弃牌，类型：bool
+    #Folded = "folded"  # 玩家是否弃牌，类型：bool
 
 class UserKey(Enum):
     """用户键枚举"""
@@ -50,6 +50,12 @@ class PlayerStatus(Enum):
     Playing = "playing"  # 正在游戏状态
     Folded = "folded"  # 弃牌状态
 
+class OnlineStatus(Enum):
+    """玩家在线状态枚举"""
+    Online = "online"  # 在线状态
+    LostConnection = "lost_connection"  # 失去连接状态
+    Offline = "offline"  # 离线状态，用于指示用户在游戏中主动断开连接的状态
+
 class RoomSettingKey(Enum):
     """房间设置键枚举"""
     IsDiffentSuit235GreaterThanThreeOfAKind = "is_diffent_suit_235_greater_than_three_of_a_kind" # 是否不同花色235大于豹子（在存在豹子的情况下）
@@ -57,7 +63,7 @@ class RoomSettingKey(Enum):
     InitialCoins = "initial_coins"  # 初始金币数
     BaseBet = "base_bet"  # 底注
     MaxBet = "max_bet"  # 单注封顶金币数
-    MaxHands = "max_hands"  # 手数封顶数
+    MaxRounds = "max_rounds"  # 手数封顶数
     MaxPotAmount = "max_pot_amount"  # 当局底池最大数额
     MaxPlayerNumber = "max_player_number"  # 房主设置的房间最大人数
 
@@ -71,12 +77,6 @@ class RoomStatus(Enum):
     """房间状态枚举"""
     Normal = "normal"  # 正常状态
     WaitingToDestroy = "waiting_to_destroy"  # 因为所有的玩家都离线了，等待结束游戏，销毁房间
-
-class OnlineStatus(Enum):
-    """玩家在线状态枚举"""
-    Online = "online"  # 在线状态
-    LostConnection = "lost_connection"  # 失去连接状态
-    Offline = "offline"  # 离线状态，用于指示用户在游戏中主动断开连接的状态
 
 class SessionKey(Enum):
     """会话键枚举"""
@@ -120,6 +120,8 @@ class ServerMessageType(Enum):
     GameReset = "game_reset"  # 游戏重置消息
     PlayerLeaved = "player_leaved"  # 玩家离开消息
     RoomClosed = "room_closed"  # 房间关闭消息
+    PlayerFolded = "player_folded"  # 玩家弃牌消息
+    AvatarSet = "avatar_set"  # 玩家设置头像消息
 
 class ServerDataKey(Enum):
     """服务器消息键枚举"""
@@ -148,4 +150,4 @@ class ServerDataKey(Enum):
     Message = "message"  # 消息内容，类型：str
     RoomList = "room_list"  # 房间列表消息，类型：list，每个元素为房间信息字典，字典键为RoomKey中的值
     Cards = "cards"  # 玩家手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）
-    GameStatus = "game_status"  # 游戏状态，类型：str，值域：GameStatus，开始和结束游戏时设置
+    AvatarURL = "avatar_url"  # 玩家头像URL，类型：str

@@ -5,7 +5,6 @@
 """
 
 import random
-from game_enum import RoomKey, RoomSettingKey
 
 # 花色和牌面定义
 SUITS = ["♥", "♦", "♠", "♣"]  # 扑克牌花色：红桃、方块、黑桃、梅花，红色>黑色，桃子大于方块或梅花
@@ -282,17 +281,21 @@ def compare_two_hands(hand1, hand2, has_three_of_a_kind_in_any_hand, isDiffentSu
         return compare_same_level_hands(hand1, hand2, is_A23_as_straight=is_A23_as_straight)
 
 
-def compare_hands(*hands, raise_compare_hand_index=0, isDiffentSuit235GreaterThanThreeOfAKind=True, is_A23_as_straight=True):
-    """
-    比较多手牌的大小
-    参数：至少需要两手牌作为参数
+def compare_hands(hands:list, raise_compare_hand_index:int=None, isDiffentSuit235GreaterThanThreeOfAKind=True, is_A23_as_straight=True)->list:
+    """比较手牌的大小
 
-    特殊比较规则：
-    - 235与豹子的比较可通过配置项控制
-    - 235之间的比较按花色顺序（红桃 > 梅花 > 方块 > 黑桃）
-    - 对于相同牌型，按牌面数值和花色进行比较
+    Args:
+        hands (list): 要比较的手牌列表，每个元素是一个包含3张牌面的列表,（如[[('A', '♥'), ('K', '♥'), ('Q', '♥')], [('2', '♠'), ('3', '♦'), ('5', '♠')]]）
+        raise_compare_hand_index (int, optional): 发起比牌的手牌索引，只有在两幅手牌时生效。None表示是系统发起的开牌，不是玩家之间的比牌。Defaults to None.
+        isDiffentSuit235GreaterThanThreeOfAKind (bool, optional): 是否设置“在存在豹子的情况下，非同花235大于豹子”的规则。Defaults to True.
+        is_A23_as_straight (bool, optional): 是否设置“将23A视为顺子”的规则。Defaults to True.
 
-    返回：整数，表示最大手牌在参数中的索引位置
+    Raises:
+        ValueError: _description_
+        ValueError: _description_
+
+    Returns:
+        list: _description_
     """
     # 比较多个手牌的大小，至少需要2个参数
     if len(hands) < 2:
@@ -300,37 +303,39 @@ def compare_hands(*hands, raise_compare_hand_index=0, isDiffentSuit235GreaterTha
 
     # 检查所有手牌中是否存在豹子
     has_three_of_a_kind_in_any_hand = any(is_three_of_a_kind(hand) for hand in hands)
+    max_hand_index_list:list = [0]
 
     # 如果只有两手牌，直接返回比较结果
     if len(hands) == 2:
         result = compare_two_hands(hands[0], hands[1], has_three_of_a_kind_in_any_hand, isDiffentSuit235GreaterThanThreeOfAKind, is_A23_as_straight)
         if result > 0:
-            return 0
+            return [0]
         elif result < 0:
-            return 1
-        else: # 两手牌相等，返回第一手牌的索引
-            max_hand_index = None
-            if raise_compare_hand_index == 0:
-                max_hand_index = 1
+            return [1]
+        else: # 两手牌相等
+            if raise_compare_hand_index is None:
+                raise_compare_hand_index = [0, 1]
+            elif raise_compare_hand_index == 0:
+                max_hand_index_list = [1]
+            elif raise_compare_hand_index == 1:
+                max_hand_index_list = [0]
             else:
-                max_hand_index = 0
-            print(f"两手牌相等：{hands[0]} 和 {hands[1]}, 发起比较的索引:{raise_compare_hand_index}, 判胜索引: {max_hand_index}")
-            return max_hand_index
+                raise ValueError(f"只有两名玩家间可发起比牌，因此raise_compare_hand_index 只能为 0 或 1，当前值为 {raise_compare_hand_index}")
+            print(f"两手牌相等：{hands[0]} 和 {hands[1]}, 发起比较的索引:{raise_compare_hand_index}, 判胜索引: {max_hand_index_list}")
+            return max_hand_index_list
             
-
-    # 处理多手牌比较的情况
-    # 返回最大的手牌的索引
-    max_hand_index = 0
-    
     print(f"多手牌比较开始，共{len(hands)}手牌")
     for i in range(1, len(hands)):
         # 使用内部函数比较当前手牌与最大手牌，避免递归
-        result = compare_two_hands(hands[i], hands[max_hand_index], has_three_of_a_kind_in_any_hand, 
+        result = compare_two_hands(hands[i], hands[max_hand_index_list[0]], has_three_of_a_kind_in_any_hand, 
             isDiffentSuit235GreaterThanThreeOfAKind, is_A23_as_straight)
-        print(f"比较手牌{i} {hands[i]} 与当前最大手牌{max_hand_index} {hands[max_hand_index]}, 结果: {result}")
+        print(f"比较手牌{i} {hands[i]} 与当前最大手牌{hands[max_hand_index_list[0]]}比较, 结果: {result}")
         if result > 0:
-            max_hand_index = i
-            print(f"更新最大手牌索引为: {max_hand_index}")
+            max_hand_index_list.clear()
+            max_hand_index_list.append(i)
+            print(f"更新最大手牌索引为: {max_hand_index_list}")
+        elif result == 0:
+            max_hand_index_list.append(i)
     # 返回最大的手牌索引
-    print(f"最终最大手牌索引: {max_hand_index}, 手牌: {hands[max_hand_index]}")
-    return max_hand_index
+    print(f"最终最大手牌索引: {max_hand_index_list}, 手牌: {[hands[i] for i in max_hand_index_list]}")
+    return max_hand_index_list

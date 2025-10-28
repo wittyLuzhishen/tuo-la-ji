@@ -11,7 +11,7 @@ DEFAULT_ROOM_SETTINGS = {
     RoomSettingKey.InitialCoins.value: 1000,
     RoomSettingKey.BaseBet.value: 2,
     RoomSettingKey.MaxBet.value: 100,
-    RoomSettingKey.MaxHands.value: 10,
+    RoomSettingKey.MaxRounds.value: 10,
     RoomSettingKey.MaxPotAmount.value: 1500,
     RoomSettingKey.MaxPlayerNumber.value: 6,
 }
@@ -194,14 +194,14 @@ def join_room(room_id:str, player_id:str, username:str, avatar:str):
     
     player = {
         PlayerKey.ID.value: player_id,
-        PlayerKey.Username.value: username,
+        #PlayerKey.Username.value: username,
+        #PlayerKey.Avatar.value: avatar,
         PlayerKey.Coins.value: rooms[room_id][RoomKey.Settings.value][RoomSettingKey.InitialCoins.value],
         PlayerKey.Status.value: PlayerStatus.Spectator.value,
-        PlayerKey.Avatar.value: avatar,
         PlayerKey.OnlineStatus.value: OnlineStatus.Online.value,
         PlayerKey.Cards.value: [],
         PlayerKey.HasLookedAtCards.value: False,
-        PlayerKey.Folded.value: False,
+        #PlayerKey.Folded.value: False,
     }
     
     if rooms[room_id][RoomKey.Players.value] in None:
@@ -222,7 +222,8 @@ def leave_room(room_id, player_id):
     room = rooms[room_id]
     del room[RoomKey.Players.value][index]
     if player_id in room[RoomKey.Seats.value]:
-        room[RoomKey.Seats.value].remove(player_id)
+        index = room[RoomKey.Seats.value].index(player_id)
+        room[RoomKey.Seats.value][index] = None
     if room[RoomKey.Owner.value] == player_id:
         room[RoomKey.Owner.value] = room[RoomKey.Players.value][0][PlayerKey.ID.value]
     if room[RoomKey.LastWinner.value] == player_id:
@@ -255,20 +256,6 @@ def is_player_turn(room_id, player_id):
         
     # 直接比较玩家ID
     return current_player_id == player_id
-
-
-def update_player_folded(room_id, player_id, folded=True):
-    """
-    更新玩家弃牌状态
-    """
-    if room_id not in rooms:
-        return False
-        
-    for player in rooms[room_id][RoomKey.Players.value]:
-        if player[PlayerKey.ID.value] == player_id:
-            player[PlayerKey.Folded.value] = folded
-            return True
-    return False
 
 
 def seat_player(room_id:str, player:dict, new_seat_index:int=-1):
@@ -333,7 +320,7 @@ def update_room_settings(room_id, settings:dict)->tuple:
     initialCoins = settings.get(RoomSettingKey.InitialCoins.value, 0)
     baseBet = settings.get(RoomSettingKey.BaseBet.value, 0)
     maxBet = settings.get(RoomSettingKey.MaxBet.value, 0)
-    maxHands = settings.get(RoomSettingKey.MaxHands.value, 0)
+    maxHands = settings.get(RoomSettingKey.MaxRounds.value, 0)
     maxPotAmount = settings.get(RoomSettingKey.MaxPotAmount.value, 0)
     maxPlayers = settings.get(RoomSettingKey.MaxPlayerNumber.value, 0)
     if isDiffentSuit235GreaterThanThreeOfKing is None or isA23AsStraight is None:
@@ -396,6 +383,26 @@ def _update_players_by_room_setting(room_id:str, setting:dict):
     return True
 
 
+def reset_room_when_game_end(room_id:str):
+    """
+    当一局游戏结束时，重置房间状态
+    """
+    if room_id not in rooms:
+        return False
+    room = rooms[room_id]
+    room[RoomKey.CurrentTurnPlayerID.value] = None # 待开局时确定
+    room[RoomKey.GameStatus.value] = GameStatus.Wating.value
+    #room[RoomKey.Pot.value] = 0
+    #room[RoomKey.CurrentRound.value] = 1
+    #room[RoomKey.CurrentBet.value] = room[RoomKey.Settings.value][RoomSettingKey.BaseBet.value]
+    # 重置所有玩家的状态
+    for player in room[RoomKey.Players.value]:
+        player[PlayerKey.Status.value] = PlayerStatus.Seated.value
+        #player[PlayerKey.Cards.value] = None
+        #player[PlayerKey.HasLookedAtCards.value] = False
+    return True
+
+
 def reset_room_for_new_game(room_id:str, continue_players:list, seats:list)->bool:
     """
     当所有玩家都同意继续游戏时，
@@ -404,7 +411,6 @@ def reset_room_for_new_game(room_id:str, continue_players:list, seats:list)->boo
     """
     if room_id not in rooms:
         return False
-        
     room = rooms[room_id]
     room[RoomKey.Players.value] = continue_players
     room[RoomKey.Owner.value] = room[RoomKey.Players.value][0][PlayerKey.ID.value]
@@ -416,13 +422,13 @@ def reset_room_for_new_game(room_id:str, continue_players:list, seats:list)->boo
     room[RoomKey.Seats.value] = seats if seats else [None] * len(room[RoomKey.Players.value])
     room[RoomKey.GameLog.value] = []
     room[RoomKey.Pot.value] = 0
-    room[RoomKey.CurrentBet.value] = room[RoomKey.Settings.value][RoomSettingKey.BaseBet.value]
     room[RoomKey.CurrentTurnPlayerID.value] = None
-    room[RoomKey.CurrentRound.value] = None
+    room[RoomKey.CurrentRound.value] = 1
+    room[RoomKey.CurrentBet.value] = room[RoomKey.Settings.value][RoomSettingKey.BaseBet.value]
     
     # 重置所有玩家的状态
     for player in room[RoomKey.Players.value]:
-        player[PlayerKey.Folded.value] = False
+        #player[PlayerKey.Folded.value] = False
         player[PlayerKey.Cards.value] = None
         player[PlayerKey.HasLookedAtCards.value] = False
     # 这句代码是开关，当游戏主循环中检测到所有玩家都准备就绪后，游戏将开始，状态设置会被设置为Playing
@@ -444,3 +450,12 @@ def clean_unready_players_from_seats(room_id:str):
             room[RoomKey.Seats.value][seat_index] = None
     
     return True
+
+
+def get_playing_players(players:list)->list:
+    """
+    获取所有正在游戏中的玩家。返回的是玩家的引用，修改返回的列表会影响到原始玩家列表。
+    """
+    return [player for player in players if player[PlayerKey.Status.value] == PlayerStatus.Playing.value]
+
+

@@ -21,7 +21,7 @@ DEFAULT_ROOM_SETTINGS = {
     RoomSettingKey.InitialCoins.value: 1000,
     RoomSettingKey.BaseBet.value: 2,
     RoomSettingKey.MaxBet.value: 100,
-    RoomSettingKey.MaxHands.value: 10,
+    RoomSettingKey.MaxRounds.value: 10,
     RoomSettingKey.MaxPotAmount.value: 1500,
     RoomSettingKey.MaxPlayerNumber.value: 6,
 }
@@ -426,7 +426,7 @@ def update_room_settings(room_id, settings:dict):
     initialCoins = settings.get(RoomSettingKey.InitialCoins.value, 0)
     baseBet = settings.get(RoomSettingKey.BaseBet.value, 0)
     maxBet = settings.get(RoomSettingKey.MaxBet.value, 0)
-    maxHands = settings.get(RoomSettingKey.MaxHands.value, 0)
+    maxHands = settings.get(RoomSettingKey.MaxRounds.value, 0)
     maxPotAmount = settings.get(RoomSettingKey.MaxPotAmount.value, 0)
     maxPlayers = settings.get(RoomSettingKey.MaxPlayerNumber.value, 0)
     if isDiffentSuit235GreaterThanThreeOfKing is None or isA23AsStraight is None:

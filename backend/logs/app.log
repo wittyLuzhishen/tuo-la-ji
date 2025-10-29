@@ -1,0 +1,235 @@
+2025-10-29 10:30:59,214 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 10:31:22,777 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 10:31:48,826 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 10:32:05,401 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 11:43:35,246 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 11:44:27,244 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 11:45:05,503 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 11:45:27,403 - root - WARNING - utils.py:15 - 事件没有收到数据: connect
+2025-10-29 11:45:27,472 - app - ERROR - app.py:838 - Exception on /@vite/client [GET]
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 765, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 740, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 939, in ensure_sync
+    return self.async_to_sync(func)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 960, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+2025-10-29 11:46:27,331 - engineio.server - ERROR - server.py:460 - disconnect handler error
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\engineio\server.py", line 450, in run_handler
+    return self.handlers[event](*args)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\socketio\server.py", line 671, in _handle_eio_disconnect
+    self._handle_disconnect(eio_sid, n, reason)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\socketio\server.py", line 568, in _handle_disconnect
+    self._trigger_event('disconnect', namespace, sid,
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\socketio\server.py", line 617, in _trigger_event
+    return handler(*args)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask_socketio\__init__.py", line 282, in _handler
+    return self._handle_event(handler, message, namespace, sid,
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask_socketio\__init__.py", line 827, in _handle_event
+    ret = handler(*args)
+  File "E:\cs\拖拉机纸牌游戏\backend\utils.py", line 17, in wrapper
+    return func(data)
+  File "E:\cs\拖拉机纸牌游戏\backend\controllers_common.py", line 105, in disconnect
+    user_id = data.get('user_id', '未知用户')
+AttributeError: 'str' object has no attribute 'get'
+2025-10-29 13:45:31,531 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 13:46:00,544 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 13:46:13,017 - controllers_common - INFO - controllers_common.py:93 - 客户端连接事件: 会话ID=v7QjXpcZbobVv9plAAAB
+2025-10-29 13:46:13,339 - controllers_common - INFO - controllers_common.py:135 - 客户端断开连接: 用户=v7QjXpcZbobVv9plAAAB, 原因=
+2025-10-29 13:47:07,204 - controllers_common - INFO - controllers_common.py:93 - 客户端连接事件: 会话ID=lcDMUJtFBRJd9faaAAAD
+2025-10-29 13:47:07,350 - app - ERROR - app.py:838 - Exception on /@vite/client [GET]
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 765, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 740, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 939, in ensure_sync
+    return self.async_to_sync(func)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 960, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+2025-10-29 13:47:52,711 - controllers_common - INFO - controllers_common.py:135 - 客户端断开连接: 用户=lcDMUJtFBRJd9faaAAAD, 原因=
+2025-10-29 13:51:18,830 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 13:51:29,882 - controllers_common - INFO - controllers_common.py:92 - 客户端连接事件: 会话ID=Se1ttJnoqB8a9yKlAAAB
+2025-10-29 13:51:30,200 - app - ERROR - app.py:838 - Exception on /@vite/client [GET]
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 765, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 740, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 939, in ensure_sync
+    return self.async_to_sync(func)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 960, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+2025-10-29 13:51:31,162 - controllers_common - INFO - controllers_common.py:155 - 客户端断开连接: 用户=Se1ttJnoqB8a9yKlAAAB, 原因=
+2025-10-29 13:52:20,445 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 13:53:30,617 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 13:53:42,869 - controllers_common - INFO - controllers_common.py:92 - 客户端连接事件: 会话ID=E0_nbroEBV2n0EtKAAAB
+2025-10-29 13:53:42,990 - app - ERROR - app.py:838 - Exception on /@vite/client [GET]
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 765, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 740, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 939, in ensure_sync
+    return self.async_to_sync(func)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 960, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+2025-10-29 13:53:43,812 - controllers_common - INFO - controllers_common.py:134 - 客户端断开连接: 用户=E0_nbroEBV2n0EtKAAAB, 原因=
+2025-10-29 14:37:34,991 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 14:38:37,702 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 14:39:06,066 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 14:40:44,598 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 14:41:04,693 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=721OdOzQHzigbZVLAAAB
+2025-10-29 14:41:04,791 - app - ERROR - app.py:838 - Exception on /@vite/client [GET]
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 765, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 740, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 939, in ensure_sync
+    return self.async_to_sync(func)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 960, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+2025-10-29 14:41:06,122 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=721OdOzQHzigbZVLAAAB, 原因=
+2025-10-29 14:59:32,709 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=TM5LXTW9mD3JyBrpAAAD
+2025-10-29 14:59:33,025 - app - ERROR - app.py:838 - Exception on /@vite/client [GET]
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 765, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 740, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 939, in ensure_sync
+    return self.async_to_sync(func)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 960, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+2025-10-29 15:01:10,837 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 15:01:32,020 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=6075yAQFO1nxrKJrAAAB
+2025-10-29 15:01:32,147 - app - ERROR - app.py:838 - Exception on /@vite/client [GET]
+Traceback (most recent call last):
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 765, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 740, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 939, in ensure_sync
+    return self.async_to_sync(func)
+  File "E:\cs\拖拉机纸牌游戏\venv-3.10.11\lib\site-packages\flask\app.py", line 960, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+2025-10-29 15:01:34,189 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=6075yAQFO1nxrKJrAAAB, 原因=
+2025-10-29 15:09:22,455 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 15:09:47,000 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=BfQq1qqqnzTEcl42AAAB
+2025-10-29 15:09:47,249 - controllers_common - ERROR - controllers_common.py:440 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+2025-10-29 15:10:06,078 - controllers_common - INFO - controllers_common.py:274 - 设置用户信息: 用户ID=, 用户名=1, 头像地址：
+2025-10-29 15:11:59,420 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=BfQq1qqqnzTEcl42AAAB, 原因=
+2025-10-29 15:12:17,790 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 15:12:44,125 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=M4aZLCP_UbUiyVbuAAAB
+2025-10-29 15:12:44,443 - controllers_common - ERROR - controllers_common.py:458 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+2025-10-29 15:13:10,145 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=M4aZLCP_UbUiyVbuAAAB, 原因=
+2025-10-29 15:13:32,273 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=b8R-G3YhpxWXNQnpAAAD
+2025-10-29 15:13:32,340 - controllers_common - ERROR - controllers_common.py:458 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+2025-10-29 15:13:37,683 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=b8R-G3YhpxWXNQnpAAAD, 原因=
+2025-10-29 15:22:32,331 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:02:38,501 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:03:16,748 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:03:40,694 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:05:55,449 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=gX55PGVmfWuwg4CCAAAB
+2025-10-29 16:05:56,019 - controllers_common - ERROR - controllers_common.py:440 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+2025-10-29 16:10:25,583 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=gX55PGVmfWuwg4CCAAAB, 原因=
+2025-10-29 16:10:27,655 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:10:28,091 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=NPfS-PRHjViPIUI0AAAB
+2025-10-29 16:10:49,281 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=NPfS-PRHjViPIUI0AAAB, 原因=
+2025-10-29 16:10:49,856 - controllers_common - INFO - controllers_common.py:77 - 客户端连接事件: 会话ID=4YJSReG92tyV2qXWAAAD
+2025-10-29 16:11:28,132 - controllers_common - INFO - controllers_common.py:118 - 客户端断开连接: 用户=4YJSReG92tyV2qXWAAAD, 原因=
+2025-10-29 16:11:29,975 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:11:30,075 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=6V-6pmfZZIVzVEW4AAAB
+2025-10-29 16:11:45,312 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=6V-6pmfZZIVzVEW4AAAB, 原因=
+2025-10-29 16:11:45,972 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=TIZ4Duv7djqvtTM9AAAD
+2025-10-29 16:11:49,048 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=TIZ4Duv7djqvtTM9AAAD, 原因=
+2025-10-29 16:11:49,418 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=konptGJjCUe3D5VQAAAF
+2025-10-29 16:12:43,317 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=, 用户名=0, 头像地址：http://127.0.0.1:5000/static/avatars/default.svg
+2025-10-29 16:13:27,116 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:13:31,794 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=8ts0DM24hcxopl63AAAB
+2025-10-29 16:19:41,876 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=8ts0DM24hcxopl63AAAB, 原因=
+2025-10-29 16:19:45,543 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:19:46,530 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=s9Gyo6KbY80LZUA9AAAB
+2025-10-29 16:19:48,510 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=s9Gyo6KbY80LZUA9AAAB, 原因=
+2025-10-29 16:19:49,168 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=x1M_8aIBPtbovVwCAAAD
+2025-10-29 16:23:29,206 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=x1M_8aIBPtbovVwCAAAD, 原因=
+2025-10-29 16:23:31,020 - root - INFO - app.py:23 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:23:31,298 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=oZagKTiGrV8SVAgvAAAB
+2025-10-29 16:24:03,536 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=oZagKTiGrV8SVAgvAAAB, 原因=
+2025-10-29 16:24:04,141 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=L_WFP3RLmpqJUw6SAAAD
+2025-10-29 16:40:29,429 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=L_WFP3RLmpqJUw6SAAAD, 原因=
+2025-10-29 16:40:34,130 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:40:34,488 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=-mXdU0BpbRH169XIAAAB
+2025-10-29 16:40:43,974 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=-mXdU0BpbRH169XIAAAB, 原因=
+2025-10-29 16:40:44,652 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=ngVxw4MLUjfJ7Qg7AAAD
+2025-10-29 16:41:00,791 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=, 用户名=0, 头像地址：http://127.0.0.1:5000/static/avatars/default.svg
+2025-10-29 16:55:54,968 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=ngVxw4MLUjfJ7Qg7AAAD, 原因=
+2025-10-29 16:55:57,786 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 16:55:58,104 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=vrkYMQCRp9QdjD8TAAAB
+2025-10-29 16:56:01,573 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=vrkYMQCRp9QdjD8TAAAB, 原因=
+2025-10-29 16:56:02,177 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=bEgx2tLv3pckL5CrAAAD
+2025-10-29 16:56:12,744 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=, 用户名=miao, 头像地址：http://127.0.0.1:5000/static/avatars/default.svg
+2025-10-29 17:01:53,484 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=bEgx2tLv3pckL5CrAAAD, 原因=
+2025-10-29 17:01:54,525 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=Wsd2O0eRY7bU_QtRAAAF
+2025-10-29 17:18:57,645 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=Wsd2O0eRY7bU_QtRAAAF, 原因=
+2025-10-29 17:18:58,598 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=tDBHpszrO9LerY8pAAAH
+2025-10-29 17:19:03,803 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=tDBHpszrO9LerY8pAAAH, 用户名=miao, 头像地址：http://127.0.0.1:5000/static/avatars/default.svg
+2025-10-29 17:20:06,470 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=tDBHpszrO9LerY8pAAAH, 原因=
+2025-10-29 17:20:07,249 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=w__W6J_l984FmYkfAAAJ
+2025-10-29 17:20:10,260 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=w__W6J_l984FmYkfAAAJ, 用户名=miao, 头像地址：http://127.0.0.1:5000/static/avatars/preset1.svg
+2025-10-29 17:29:58,815 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=w__W6J_l984FmYkfAAAJ, 原因=
+2025-10-29 17:29:59,430 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=9dg1wZGHC3tbiFs2AAAL
+2025-10-29 17:30:10,037 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=9dg1wZGHC3tbiFs2AAAL, 原因=
+2025-10-29 17:30:10,634 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=AgOPGbVlb3dQBNqKAAAN
+2025-10-29 17:34:20,656 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=AgOPGbVlb3dQBNqKAAAN, 原因=
+2025-10-29 17:34:24,507 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-29 17:34:25,304 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=FmMmaPsMLdFk-2qTAAAB
+2025-10-29 17:34:33,317 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=p9vVl49XFpW0_D0JAAAD
+2025-10-29 17:34:33,325 - controllers_common - ERROR - controllers_common.py:439 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /@vite/client
+2025-10-29 17:35:11,350 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=p9vVl49XFpW0_D0JAAAD, 原因=
+2025-10-29 17:35:18,982 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=FmMmaPsMLdFk-2qTAAAB, 原因=
+2025-10-29 17:35:19,901 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=GpvC7J0d1JAMkHShAAAF
+2025-10-29 17:37:00,796 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=, 用户名=miao, 头像地址：http://127.0.0.1:5000/static/avatars/default.svg
+2025-10-29 17:37:05,126 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=GpvC7J0d1JAMkHShAAAF, 原因=
+2025-10-29 17:37:05,911 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=0JIL3Sa3XRTrEpOnAAAH
+2025-10-29 17:37:06,696 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=0JIL3Sa3XRTrEpOnAAAH, 用户名=miao, 头像地址：http://127.0.0.1:5000/static/avatars/default.svg
+2025-10-29 17:53:56,719 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=0JIL3Sa3XRTrEpOnAAAH, 原因=

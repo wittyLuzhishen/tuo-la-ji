@@ -3,7 +3,7 @@ users = {}
 
 def get_user_info(user_id: str) -> dict:
     """
-    获取用户信息
+    获取用户信息的引用，直接修改返回结果会影响到存储的用户信息
     """
     return users.get(user_id, None)
 

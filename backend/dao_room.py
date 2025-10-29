@@ -1,44 +1,85 @@
 
-import random
-from game_enum import GameStatus, PlayerStatus, RoomKey, PlayerKey, OnlineStatus, RoomSettingKey, RoomStatus
+# -*- coding: utf-8 -*-
+"""
+房间数据访问对象模块
 
-MAX_ROOM_COUNT = 100
-ROOM_ID_LENGHT = 4 # 房间号长度为4位数字，0000-9999
+此模块负责管理游戏房间的创建、查询、更新和删除操作，
+是游戏房间数据的中央管理器。所有与房间相关的数据操作
+都应该通过此模块提供的接口进行。
+
+主要功能：
+- 创建和管理游戏房间
+- 处理玩家加入、离开房间
+- 更新玩家状态和房间设置
+- 房间相关的查询和辅助功能
+"""
+
+import random
+from dao_user import get_user_info
+from game_enums import GameStatus, PlayerStatus, RoomKey, PlayerKey, OnlineStatus, RoomSettingKey, RoomStatus, UserKey
+from utils import get_logger
+
+# 获取模块日志器
+logger = get_logger(__name__)
+
+# 常量定义
+MAX_ROOM_COUNT = 100  # 最大房间数量限制
+ROOM_ID_LENGHT = 4    # 房间号长度为4位数字，0000-9999
+
 # 默认房间设置
 DEFAULT_ROOM_SETTINGS = {
-    RoomSettingKey.IsDiffentSuit235GreaterThanThreeOfAKind.value: True,
-    RoomSettingKey.IsA23AsStraight.value: True,
-    RoomSettingKey.InitialCoins.value: 1000,
-    RoomSettingKey.BaseBet.value: 2,
-    RoomSettingKey.MaxBet.value: 100,
-    RoomSettingKey.MaxRounds.value: 10,
-    RoomSettingKey.MaxPotAmount.value: 1500,
-    RoomSettingKey.MaxPlayerNumber.value: 6,
+    RoomSettingKey.IsDiffentSuit235GreaterThanThreeOfAKind.value: True,  # 不同花色的235是否大于三张相同的牌
+    RoomSettingKey.IsA23AsStraight.value: True,                         # A23是否算作顺子
+    RoomSettingKey.InitialCoins.value: 1000,                           # 初始金币数量
+    RoomSettingKey.BaseBet.value: 2,                                   # 基础下注额
+    RoomSettingKey.MaxBet.value: 100,                                  # 最大下注额
+    RoomSettingKey.MaxRounds.value: 10,                                 # 最大回合数
+    RoomSettingKey.MaxPotAmount.value: 1500,                            # 最大底池金额
+    RoomSettingKey.MaxPlayerNumber.value: 6,                            # 最大玩家数量
 }
+
 # 存储服务器上所有房间信息的变量
 rooms = {}
+
 # 重连计时器，键是玩家ID，值是计时器引用
 reconnect_timer = {}
 
 def get_room_by_player_id(player_id):
     """
     根据玩家ID查找所在房间
-    返回房间ID，如果玩家不在任何房间则返回None
+    
+    Args:
+        player_id (str): 玩家ID
+        
+    Returns:
+        str or None: 房间ID，如果玩家不在任何房间则返回None
     """
+    logger.debug(f"查找玩家所在房间: player_id={player_id}")
     for room_id, room in rooms.items():
         for player in room[RoomKey.Players.value]:
             if player[PlayerKey.ID.value] == player_id:
+                logger.debug(f"找到玩家所在房间: player_id={player_id}, room_id={room_id}")
                 return room_id
+    logger.debug(f"未找到玩家所在房间: player_id={player_id}")
     return None
 
 
 def update_player_online_status(room_id, player_id, online_status:OnlineStatus):
     """
     更新玩家在线状态
+    
+    Args:
+        room_id (str): 房间ID
+        player_id (str): 玩家ID
+        online_status (OnlineStatus): 在线状态枚举值
+        
+    Returns:
+        bool: 更新是否成功
     """
+    logger.debug(f"更新玩家在线状态: room_id={room_id}, player_id={player_id}, status={online_status.value}")
     player, _ = find_player_in_room(room_id, player_id)
     if not player:
-        print(f"玩家{player_id}不在房间{room_id}中")
+        logger.warning(f"玩家{player_id}不在房间{room_id}中，无法更新在线状态")
         return False
         
     player[PlayerKey.OnlineStatus.value] = online_status.value
@@ -48,6 +89,14 @@ def update_player_online_status(room_id, player_id, online_status:OnlineStatus):
 def update_player_status(room_id:str, player_id:str, player_status:PlayerStatus):
     """
     更新玩家状态
+    
+    Args:
+        room_id (str): 房间ID
+        player_id (str): 玩家ID
+        player_status (PlayerStatus): 玩家状态枚举值
+        
+    Returns:
+        bool: 更新是否成功
     """
     player, _ = find_player_in_room(room_id, player_id)
     if not player:
@@ -110,7 +159,7 @@ def get_room_list():
     return room_list
 
 
-def create_room(player_id:str, username:str, room_name:str=None)->str:
+def create_room(user_id:str, room_name:str=None)->str:
     """
     玩家创建新房间，初始化房间状态，
     返回房间ID（4位数字），如果没有可用的房间号则返回None
@@ -139,20 +188,25 @@ def create_room(player_id:str, username:str, room_name:str=None)->str:
     
     # 创建新玩家
     new_player = {
-        PlayerKey.ID.value: player_id,
+        PlayerKey.ID.value: user_id,
         PlayerKey.Coins.value: DEFAULT_ROOM_SETTINGS[RoomSettingKey.InitialCoins.value], # 根据房间设置设置
         PlayerKey.Status.value: PlayerStatus.Spectator.value, # 根据房间设置设置
         PlayerKey.OnlineStatus.value: True,
         PlayerKey.CurrentBet.value: 0,
         # 与牌相关的三个状态变量，等发牌的时候设置
     }
-    
+    if room_name is None or room_name.strip() == "":
+        user = get_user_info(user_id)
+        if user:
+            room_name = f"{user[UserKey.Username.value]}的房间"
+        else:
+            room_name = f"{user_id}的房间"
     # 创建新房间
     rooms[room_id] = {
-        RoomKey.Name.value: room_name or f"{username}的房间",  # 房间名称
+        RoomKey.Name.value: room_name,  # 房间名称
         RoomKey.Players.value: [new_player],  # 使用列表存储玩家，保持顺序
         RoomKey.Seats.value: [None] * DEFAULT_ROOM_SETTINGS[RoomSettingKey.MaxPlayerNumber.value],  # 座位信息，根据房间设置设置
-        RoomKey.Owner.value: player_id,  # 创建房间的人成为该房间的首任房主
+        RoomKey.Owner.value: user_id,  # 创建房间的人成为该房间的首任房主
         RoomKey.Settings.value: DEFAULT_ROOM_SETTINGS.copy(),  # 游戏设置
         RoomKey.GameStatus.value: GameStatus.Wating.value,  # 游戏状态
         RoomKey.LastWinner.value: None,  # 上一局的赢家ID，用于确定下一局的庄家

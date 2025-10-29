@@ -1,18 +1,17 @@
 import random
-# 使用智能sleep函数替代直接导入eventlet
-from builtins import smart_sleep
-eventlet = type('EventletMock', (), {'sleep': smart_sleep})()
-from flask import session
-import uuid
+# 直接导入eventlet，因为我们已经强制使用eventlet模式
+import eventlet
+from flask import session, request
 from flask_socketio import emit, join_room as socketio_join_room, leave_room as socketio_leave_room
 import time
 
 from biz_utils import add_game_log, common_check
 from game_logic import compare_hands, create_deck, deal_cards, shuffle_deck
 from dao_user import get_user_info, set_user_info
-from game_enum import (GameStatus, PlayerKey, PlayerStatus, RoomSettingKey, ServerDataKey, RoomKey, 
-    RoomStatus, ServerMessageType, OnlineStatus, ClientDataKey, UserKey
+from game_enums import (GameStatus, PlayerKey, PlayerStatus, RoomSettingKey, RoomKey,
+    RoomStatus, OnlineStatus, UserKey
 )
+from message_enums import (ServerMessageType, ServerDataKey)
 from dao_room import (create_room, get_player_info, get_playing_players, get_room_list, is_game_started, 
     is_player_turn, is_room_owner, leave_room as leave_room_dao, reset_room_for_new_game, reset_room_when_game_end, 
     rooms, reconnect_timer, find_player_in_room, get_room_by_player_id, seat_player, update_player_online_status, 
@@ -29,68 +28,100 @@ MIN_SHOW_DOWM_TURN = 1 # 想要比牌，最少经过多少轮
 
 
 # Socket.IO事件处理函数
-def handle_connect(data:dict):
+def handle_connect():
     """
-    处理客户端连接/重连事件
+    处理客户端基本连接事件
+    
+    关键点：
+    1. 只负责处理连接建立，发送连接成功消息
+    2. 不立即分配user_id，等待客户端可能的重连请求
+    3. 重连逻辑完全由reconnect_with_id和handle_reconnect处理
     """
-    # 尝试获取现有user_id（用于重连情况）
-    existing_user_id = data.get(ClientDataKey.PlayerID.value, None)
-    user_id = None
-    room_id = None
-    if existing_user_id: # 尝试重连
-        user_id = existing_user_id
-        print(f"用户{user_id}尝试重连")
-        if user_id in reconnect_timer: # 重连未超时
-            timer = reconnect_timer.pop(user_id)
-            timer.cancel()
+    # 获取当前socket连接的会话ID
+    socket_id = request.sid
+    
+    print(f"客户端连接成功，socket_id={socket_id}，之后要等待可能的重连请求")
+    
+    # 向客户端发送连接成功消息，不包含user_id
+    # 客户端收到此消息后，应决定是否发送reconnect_with_id请求
+    emit(ServerMessageType.Connected.value, {"connected": True})
+    
+    # 返回socket_id作为临时标识符，客户端应等待后续的user_id_assigned消息
+    return socket_id
 
+def handle_reconnect(user_id:str):
+    """
+    处理客户端重连逻辑或新连接的用户ID分配
+    
+    功能：
+    1. 如果提供了有效的user_id，尝试重连验证
+    2. 如果未提供user_id或重连失败，分配新的user_id
+    3. 统一处理用户标识的生成和管理
+
+    Returns:
+        tuple: (成功标志, user_id, room_id)
+    """
+    # 获取当前socket连接的会话ID作为备选user_id
+    socket_id = request.sid
+
+    # 根据是否提供了有效的user_id决定处理方式
+    if user_id != "":
+        print(f"用户{user_id}尝试重连")
+        
+        # 检查是否在允许重连的时间段内
+        if user_id in reconnect_timer:
+            # 重连成功
+            timer = reconnect_timer.pop(user_id)
+            if hasattr(timer, 'cancel'):
+                timer.cancel()
+            
+            # 保持原来的用户ID
+            emit(ServerMessageType.UserIDAssigned.value, {'user_id': user_id}, room=user_id)
+            # 获取用户原来所在的房间
             room_id = get_room_by_player_id(user_id)
             if room_id:
                 print(f"用户{user_id}重连成功，正在重新加入房间{room_id}")
+                
+                # 处理房间加入逻辑
+                _join_room(room_id, user_id, reconnect=True)
+                
+                if room_id in rooms:
+                    room = rooms[room_id]
+                    # 如果房间状态是等待结束，且有玩家重新连接，恢复游戏状态
+                    if room[RoomKey.Status.value] == RoomStatus.WaitingToDestroy.value:
+                        # 恢复房间状态为正常状态
+                        room[RoomKey.Status.value] = RoomStatus.Normal.value
+                        add_game_log(room_id, f"玩家 {user_id} 重新连接，取消房间解散")
+                    
+                    # 无论房间状态如何，都广播游戏信息以更新玩家在线状态
+                    broadcast_game_info(room_id)
+                else:
+                    print(f"房间{room_id}不存在")
+                    room_id = None
             else:
                 print(f"用户{user_id}重连成功，但不在任何房间中")
-        else: # 重连超时，生成新的user_id
-            user_id = str(uuid.uuid4())
-            print(f"用户{existing_user_id}重连超时，生成新的user_id{user_id}")
-    else: # 如果是新连接（localStorage中没有user_id），则生成新的UUID作为user_id
-        user_id = str(uuid.uuid4())
-        print(f"新用户{user_id}连接")
-    
-    # 向客户端发送连接成功消息，包含user_id
-    emit(ServerMessageType.Connected.value, {"user_id": user_id})
-    
-    if not room_id:
-        print(f"用户{user_id}还没有加入房间，只是连接上了服务器")
-        return
-
-    if user_id == existing_user_id:
-        _join_room(room_id, user_id, is_reconnect=True)
+                room_id = None
+            
+            return True, user_id, room_id
+        else:
+            # 重连超时，分配新的user_id
+            print(f"用户{user_id}重连超时，分配新用户ID={socket_id}")
+            user_id = socket_id
+            emit(ServerMessageType.UserIDAssigned.value, {'user_id': user_id}, room=user_id)
     else:
-        # 新用户，加入房间
-        _join_room(room_id, user_id, is_reconnect=False)
-
-    if room_id not in rooms:
-        print(f"房间{room_id}不存在")
-        return
-    room = rooms[room_id]
-    # 如果房间状态是等待结束，且有玩家重新连接，恢复游戏状态
-    if room[RoomKey.Status.value] == RoomStatus.WaitingToDestroy.value:
-        # 恢复房间状态为正常状态
-        room[RoomKey.Status.value] = RoomStatus.Normal.value
-        add_game_log(room_id, f"玩家 {user_id} 重新连接，取消房间解散")
-    
-    # 无论房间状态如何，都广播游戏信息以更新玩家在线状态
-    broadcast_game_info(room_id)
+        user_id = socket_id
+        print(f"客户端未提供user_id，使用socket_id作为新的user_id={socket_id}")
+        emit(ServerMessageType.UserIDAssigned.value, {'user_id': user_id}, room=user_id)
 
 
-def handle_disconnect(reason:str, data:dict):
+def handle_disconnect(reason:str, user_id:str):
     """
     处理客户端断开连接事件
     
     Args:
         reason: 断开连接的原因，用于区分主动断开和网络不佳导致的断开
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
+
     if not user_id:
         return
 
@@ -152,7 +183,12 @@ def _clean_lost_player(user_id:str, room_id:str):
     """
 
     if user_id in reconnect_timer:
-        reconnect_timer.pop(user_id)
+        # 取消定时器任务，避免内存泄漏和重复执行
+        timer = reconnect_timer.pop(user_id)
+        # 安全地取消定时器，如果它是一个cancelable对象
+        if hasattr(timer, 'cancel'):
+            timer.cancel()
+        print(f"用户{user_id}的重连定时器已取消")
     
     # 从房间中移除玩家
     _leave_room(room_id, user_id)
@@ -182,7 +218,7 @@ def _join_room(room_id, user_id, reconnect=False)->tuple:
         add_game_log(room_id, f"玩家 {user_id} 加入房间")
         emit(ServerMessageType.RoomJoined.value, {
             ServerDataKey.RoomID.value: room_id,
-            ServerDataKey.PlayerID.value: user_id,
+            ServerDataKey.UserID.value: user_id,
         })
 
     # 通知其他玩家该玩家已加入房间
@@ -216,13 +252,10 @@ def _leave_room(room_id:str, user_id:str):
     return True
 
 
-def handle_set_userinfo(data: dict):
+def handle_set_userinfo(user_id:str, username:str, avatar_url:str):
     """
     处理设置用户名事件
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    username = data.get(ClientDataKey.Username.value, "").strip()
-    avatar_url = data.get(ClientDataKey.AvatarURL.value, "").strip()
     if not user_id or not username or not avatar_url:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "玩家ID、用户昵称、头像URL均不能为空"})
         return
@@ -246,13 +279,12 @@ def handle_get_room_list():
     emit(ServerMessageType.RoomList.value, {ServerDataKey.RoomList.value: get_room_list()})
 
 
-def handle_get_room_details(data:dict):
+def handle_get_room_details(room_id:str):
     """
     处理获取房间详情事件
     """
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    
-    if not room_id:
+
+    if not room_id or room_id.strip() == "":
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "房间ID不能为空"})
         return
         
@@ -264,15 +296,15 @@ def handle_get_room_details(data:dict):
     emit(ServerMessageType.RoomDetails.value, {ServerDataKey.Room.value: room_details})
 
 
-def handle_create_room(data: dict):
+def handle_create_room(user_id: str, room_name: str = ""):
     """
     处理创建房间事件
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    username = data.get(ClientDataKey.Username.value, "").strip()
+    user_id = user_id.strip()
+    room_name = room_name.strip()
 
-    if not user_id or not username:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户ID或用户名均不能为空"})
+    if not user_id:
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户ID不能为空"})
         return
         
     # 检查玩家是否已在房间中
@@ -282,7 +314,7 @@ def handle_create_room(data: dict):
         return
         
     # 创建新房间
-    room_id = create_room(user_id, username)
+    room_id = create_room(user_id, room_name)
     if not room_id:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "创建房间失败"})
         return
@@ -300,16 +332,13 @@ def handle_create_room(data: dict):
     broadcast_game_info(room_id)
 
 
-def handle_join_room(data: dict):
+def handle_join_room(user_id:str, room_id:str):
     """
     处理加入房间事件
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    username = data.get(ClientDataKey.Username.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     
-    if not user_id or not username:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "请先设置用户名"})
+    if not user_id or user_id.strip() == "":
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户ID不能为空"})
         return
         
     if not room_id:
@@ -337,10 +366,9 @@ def handle_join_room(data: dict):
     broadcast_game_info(room_id)
 
 
-def handle_leave_room(data:dict):
+def handle_leave_room(user_id:str, room_id:str):
     """玩家主动离开房间"""
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
+
     if not room_id or not user_id:
         return
     player = find_player_in_room(room_id, user_id)
@@ -353,7 +381,7 @@ def handle_leave_room(data:dict):
     room[RoomKey.Players.value].remove(player)
 
     emit(ServerMessageType.PlayerLeaved.value, {
-        ServerDataKey.PlayerID.value: user_id,
+        ServerDataKey.UserID.value: user_id,
         ServerDataKey.Username.value: player[PlayerKey.Username.value],
     })
 
@@ -388,35 +416,27 @@ def _handle_sit_donw_or_up(user_id:str, room_id:str, is_sit_down:bool, seat_inde
     return True
 
 
-def handle_sit_down(data:dict):
+def handle_sit_down(user_id:str, room_id:str, seat_index:int):
     """
     处理玩家坐下事件
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    seat_index = int(data.get(ClientDataKey.SeatIndex.value, -1))
+
     
     _handle_sit_donw_or_up(user_id, room_id, True, seat_index)
 
 
-def handle_stand_up(data:dict):
+def handle_stand_up(user_id:str, room_id:str):
     """
     处理玩家站起事件
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     
     _handle_sit_donw_or_up(user_id, room_id, False, -1)
 
 
-def handle_ready(data:dict):
+def handle_ready(user_id:str, room_id:str, turn_ready:bool):
     """
     处理玩家准备/取消准备事件
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    turn_ready = data.get(ClientDataKey.Ready.value, True)
-    
         
     # 查找玩家
     player = common_check(user_id, room_id, should_game_started=False)
@@ -510,7 +530,7 @@ def start_game_loop(room_id:str):
             continue
         player_last_coins = current_turn_player[PlayerKey.Coins.value]
         # 向玩家发送轮到行动的消息
-        emit(ServerMessageType.StartTurn.value, {ServerDataKey.PlayerID.value: current_turn_player_id})
+        emit(ServerMessageType.StartTurn.value, {ServerDataKey.UserID.value: current_turn_player_id})
         
         is_player_action_done = False
         start_time = time.time()
@@ -523,7 +543,7 @@ def start_game_loop(room_id:str):
         if not is_player_action_done:
             # 玩家超时未行动，视为弃牌
             update_player_status(room_id, current_turn_player_id, PlayerStatus.Folded.value)
-            emit(ServerMessageType.PlayerFolded.value, {ServerDataKey.PlayerID.value: current_turn_player_id})
+            emit(ServerMessageType.PlayerFolded.value, {ServerDataKey.UserID.value: current_turn_player_id})
 
         next_player_index = get_next_player_seat_index(room, current_turn_player_id, first_player_index)
     # 一局游戏结束
@@ -690,13 +710,10 @@ def settle(room:str):
     room[RoomKey.Pot.value] = 0 
 
 
-def handle_update_settings(data:dict):
+def handle_update_settings(user_id:str, room_id:str, settings:dict):
     """
     处理更新房间设置事件（仅房主可操作）
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    settings = data.get(ClientDataKey.Settings.value, None)
     
     player = common_check(user_id, room_id, should_game_started=False)
     if not player:
@@ -722,19 +739,16 @@ def handle_update_settings(data:dict):
     broadcast_game_info(room_id)
 
 
-def handle_kick_player(data:dict):
+def handle_kick_player(user_id:str, room_id:str, to_be_kicked_user_id:str):
     """
     处理踢出玩家事件（仅房主可操作）
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    to_be_kicked_player_id = data.get(ClientDataKey.PlayerIdToBeKicked.value, "").strip()
     
     player = common_check(user_id, room_id, should_game_started=False)
     if not player:
         return False        
         
-    if not to_be_kicked_player_id:
+    if not to_be_kicked_user_id:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "要踢出的玩家ID不能为空"})
         return False
     # 检查是否是房主
@@ -743,34 +757,31 @@ def handle_kick_player(data:dict):
         return False
         
     # 不能踢出自己
-    if user_id == to_be_kicked_player_id:
+    if user_id == to_be_kicked_user_id:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "不能踢出自己"})
         return False
         
     # 检查目标玩家是否在房间中
-    player_to_be_kicked = get_player_info(room_id, to_be_kicked_player_id)
+    player_to_be_kicked = get_player_info(room_id, to_be_kicked_user_id)
     if not player_to_be_kicked:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"要踢出的玩家{to_be_kicked_player_id}不在房间{room_id}中"})
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"要踢出的玩家{to_be_kicked_user_id}不在房间{room_id}中"})
         return False
     # 即便玩家已经就绪也可以踢出，可以踢出不喜欢的玩家
     # 踢出玩家
-    _leave_room(room_id, to_be_kicked_player_id)
+    _leave_room(room_id, to_be_kicked_user_id)
     # 离开Socket.IO通信房间
-    socketio_leave_room(room=room_id, sid=to_be_kicked_player_id)
+    socketio_leave_room(room=room_id, sid=to_be_kicked_user_id)
     
-    emit(ServerMessageType.PlayerKicked.value, {ServerDataKey.PlayerID.value: to_be_kicked_player_id})
+    emit(ServerMessageType.PlayerKicked.value, {ServerDataKey.UserID.value: to_be_kicked_user_id})
     # 广播游戏信息
     broadcast_game_info(room_id)
     
 
-def handle_continue_game(data:dict):
+def handle_continue_game(user_id:str, room_id:str, continue_game:bool):
     """
     处理游戏继续/退出选择。当一局游戏结束后，玩家的状态被设置为Seated，如果玩家选择继续游戏，状态被设置为Ready。
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    continue_game = data.get(ClientDataKey.ContinueGame.value, False)
-    
+
     player = common_check(user_id, room_id, should_game_started=False)
     if not player:
         return False
@@ -789,12 +800,10 @@ def handle_continue_game(data:dict):
     check_for_new_game(room_id)
 
 
-def handle_set_avatar(data:dict):
+def handle_set_avatar(user_id:str, avatar_url:str):
     """
     处理设置头像事件
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    avatar_url = data.get(ClientDataKey.AvatarURL.value, "").strip()
     
     if not user_id:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户未登录"})
@@ -812,9 +821,9 @@ def handle_set_avatar(data:dict):
     
     # 更新用户头像
     user_info[UserKey.AvatarURL.value] = avatar_url
-    set_user_info(user_id, user_info)
+    #set_user_info(user_id, user_info)
 
-    emit(ServerMessageType.AvatarSet.value, {ServerDataKey.PlayerID.value: user_id, ServerDataKey.AvatarURL.value: avatar_url})
+    emit(ServerMessageType.AvatarSet.value, {ServerDataKey.UserID.value: user_id, ServerDataKey.AvatarURL.value: avatar_url})
 
 
 def allowed_file(filename):

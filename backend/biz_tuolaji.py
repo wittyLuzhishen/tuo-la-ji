@@ -2,20 +2,21 @@ from flask_socketio import emit
 from biz_utils import add_game_log, common_check
 from dao_room import get_player_info, is_game_started, is_player_turn, rooms
 from dao_user import get_user_info
-from game_enum import (ClientDataKey, PlayerKey, PlayerStatus, RoomKey, RoomSettingKey, 
-    ServerDataKey, ServerMessageType, UserKey
-)
+from game_enums import (PlayerKey, PlayerStatus, RoomKey, RoomSettingKey, UserKey)
+from message_enums import (ServerMessageType, ServerDataKey)
 from game_logic import compare_hands
 from server_message_emitter import broadcast_game_info
 
 MIN_SHOWDOWN_ROUND = 1 # 开牌时要达到的轮数
 
-def handle_look_at_cards(data:dict):
+def handle_look_at_cards(user_id: str, room_id: str):
     """
     处理玩家看牌事件
+    
+    Args:
+        user_id (str): 用户ID
+        room_id (str): 房间ID
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     
     player = common_check(user_id, room_id, should_game_started=True)
     if not player:
@@ -51,12 +52,14 @@ def handle_look_at_cards(data:dict):
     broadcast_game_info(room_id)
 
 
-def handle_fold(data:dict):
+def handle_fold(user_id: str, room_id: str):
     """
     处理玩家弃牌事件
+    
+    Args:
+        user_id (str): 用户ID
+        room_id (str): 房间ID
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     
     player = common_check(user_id, room_id, should_game_started=True)
     if not player:
@@ -85,12 +88,14 @@ def handle_fold(data:dict):
     broadcast_game_info(room_id)
 
 
-def handle_call(data:dict):
+def handle_call(user_id: str, room_id: str):
     """
     处理玩家跟注事件
+    
+    Args:
+        user_id (str): 用户ID
+        room_id (str): 房间ID
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
     
     player = common_check(user_id, room_id, should_game_started=True)
 
@@ -127,7 +132,7 @@ def handle_call(data:dict):
     
     # 广播下注信息
     emit(ServerMessageType.RoomUpdatedWithPlayerBets.value, {
-        ServerDataKey.PlayerID.value: player[PlayerKey.ID.value],
+        ServerDataKey.UserID.value: player[PlayerKey.ID.value],
         ServerDataKey.CallAmount.value: call_amount,
         ServerDataKey.Pot.value: room[RoomKey.Pot.value]
     }, room=room_id)
@@ -136,13 +141,16 @@ def handle_call(data:dict):
     broadcast_game_info(room_id)
 
 
-def handle_raise(data:dict):
+def handle_raise_bet(user_id: str, room_id: str, raise_amount: int):
     """
     处理玩家加注事件
+    
+    Args:
+        user_id (str): 用户ID
+        room_id (str): 房间ID
+        raise_amount (int): 加注金额
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    add_amount = data.get(ClientDataKey.AddAmount.value, 0)
+    add_amount = raise_amount
     
     player = common_check(user_id, room_id, should_game_started=True)
     if not player:
@@ -183,7 +191,7 @@ def handle_raise(data:dict):
     
     # 广播下注信息
     emit(ServerMessageType.RoomUpdatedWithPlayerBets.value, {
-        ServerDataKey.PlayerID.value: player[PlayerKey.ID.value],
+        ServerDataKey.UserID.value: player[PlayerKey.ID.value],
         ServerDataKey.RaiseAmount.value: total_bet,
         ServerDataKey.CurrentBet.value: current_bet,
         ServerDataKey.Pot.value: room[RoomKey.Pot.value]
@@ -192,13 +200,14 @@ def handle_raise(data:dict):
     broadcast_game_info(room_id)
 
 
-def handle_showdown(data:dict):
+def handle_showdown(user_id: str, room_id: str, player_id_to_be_showdown:str):
     """
-    处理玩家开牌事件
+    处理玩家开牌（比牌）事件
+    
+    Args:
+        user_id (str): 用户ID
+        room_id (str): 房间ID
     """
-    user_id = data.get(ClientDataKey.PlayerID.value, "").strip()
-    room_id = data.get(ClientDataKey.RoomID.value, "").strip()
-    player_id_to_be_showdown = data.get(ClientDataKey.PlayerIdToBeShowdown.value, "").strip()
         
     player = common_check(user_id, room_id, should_game_started=True)
     if not player:

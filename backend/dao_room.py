@@ -15,8 +15,11 @@
 """
 
 import random
+from message_enums import ServerDataKey
 from dao_user import get_user_info
-from game_enums import GameStatus, PlayerStatus, RoomKey, PlayerKey, OnlineStatus, RoomSettingKey, RoomStatus, UserKey
+from game_enums import (GameStatus, PlayerStatus, RoomKey, PlayerKey, 
+    OnlineStatus, RoomSettingKey, RoomStatus, UserKey
+)
 from utils import get_logger
 
 # 获取模块日志器
@@ -144,16 +147,15 @@ def get_room_list():
     room_list = []
     for room_id, room in rooms.items():
         # 获取房主信息
-        owner_info = get_player_info(room_id, room[RoomKey.Owner.value])
-        
+        owner_info = get_user_info(room[RoomKey.Owner.value])
         room_info = {
-            RoomKey.ID.value: room_id,
-            RoomKey.Name.value: room[RoomKey.Name.value],
-            RoomKey.Owner.value: owner_info[RoomKey.Owner.value],
-            RoomKey.Settings.value: room[RoomKey.Settings.value],
-            RoomKey.GameStatus.value: room[RoomKey.GameStatus.value],
-            RoomKey.Status.value: room[RoomKey.Status.value],
-            RoomKey.PlayerCount.value: len(room[RoomKey.Players.value]),
+            ServerDataKey.RoomID.value: room_id,
+            ServerDataKey.RoomName.value: room[RoomKey.Name.value],
+            ServerDataKey.OwnerName.value: owner_info[UserKey.Username.value],
+            ServerDataKey.Settings.value: room[RoomKey.Settings.value],
+            ServerDataKey.GameStatus.value: room[RoomKey.GameStatus.value],
+            ServerDataKey.Status.value: room[RoomKey.Status.value],
+            ServerDataKey.PlayerCount.value: len(room[RoomKey.Players.value]),
         }
         room_list.append(room_info)
     return room_list

@@ -39,6 +39,11 @@ import controllers_tuolaji
 # 初始化SocketIO
 socketio.init_app(app)
 
+# 处理/@vite/client请求，解决Vite客户端加载问题
+@app.route('/@vite/client')
+def vite_client():
+    # 返回空的JavaScript响应，避免404错误
+    return '', 200
 
 # 启动应用
 if __name__ == "__main__":

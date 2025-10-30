@@ -57,7 +57,9 @@ ENUMS_DATA = {
     "ServerMessageType": {
         "description": "服务器消息类型枚举",
         "values": [
-            ("Connected", "connected", "连接/重连成功消息"),
+            ("Connect", "connect", "连接/重连成功消息"),
+            ("Disconnect", "disconnect", "断开连接消息"),
+            ("ConnectError", "connect_error", "连接/重连错误消息"),
             ("UserIDAssigned", "user_id_assigned", "用户ID分配消息"),
             ("LostConnection", "lost_connection", "玩家失去连接消息"),
             ("ReconnectRestore", "reconnect_restore", "重新加入房间、载入房间信息消息"),
@@ -80,7 +82,6 @@ ENUMS_DATA = {
             ("PlayerLeaved", "player_leaved", "玩家离开消息"),
             ("RoomClosed", "room_closed", "房间关闭消息"),
             ("PlayerFolded", "player_folded", "玩家弃牌消息"),
-            ("AvatarSet", "avatar_set", "玩家设置头像消息"),
         ]
     },
     "ServerDataKey": {
@@ -91,11 +92,14 @@ ENUMS_DATA = {
             ("ActivePlayersCount", "active_players_count", "活动玩家数，类型：int"),
             ("RoomID", "room_id", "房间ID，类型：str"),
             ("Room", "room", "房间信息，类型：dict"),
+            ("RoomName", "room_name", "房间名称，类型：str"),
             ("Players", "players", "玩家信息列表，类型：list，每个元素为玩家信息字典，字典键为PlayerKey中的值"),
             ("Seats", "seats", "座位信息列表，类型：list，每个元素为座位信息字典，字典键为PlayerKey中的值"),
             ("Owner", "owner", "房主ID，类型：str，创建房间或有玩家离开时设置"),
+            ("OwnerName", "owner_name", "房主用户名，类型：str，创建房间或有玩家离开时设置"),
             ("Settings", "settings", "游戏设置，类型：dict"),
             ("GameStatus", "game_status", "游戏状态，类型：str，值域：GameStatus，开始和结束游戏时设置"),
+            ("PlayerCount", "player_count", "玩家数量，类型：int"),
             ("LastWinner", "last_winner", "上一局的赢家ID，用于确定下一局的庄家，类型：str，游戏结束时设置"),
             ("GameLog", "game_log", "游戏日志，类型：list"),
             ("Status", "status", "房间状态，类型：str，值域：RoomStatus"),
@@ -113,6 +117,14 @@ ENUMS_DATA = {
             ("Cards", "cards", "玩家手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）"),
             ("CallAmount", "call_amount", "玩家加注金额，类型：int"),
             ("RaiseAmount", "raise_amount", "玩家选择加注，之后付出的注数，类型：int"),
+            ("IsDiffentSuit235GreaterThanThreeOfAKind", "is_diffent_suit_235_greater_than_three_of_a_kind", "是否不同花色235大于豹子（在存在豹子的情况下）"),
+            ("IsA23AsStraight", "is_a23_as_straight", "是否将A23作为顺子"),
+            ("InitialCoins", "initial_coins", "初始金币数"),
+            ("BaseBet", "base_bet", "底注"),
+            ("MaxBet", "max_bet", "单注封顶金币数"),
+            ("MaxRounds", "max_rounds", "手数封顶数"),
+            ("MaxPotAmount", "max_pot_amount", "当局底池最大数额"),
+            ("MaxPlayerNumber", "max_player_number", "房主设置的房间最大人数"),
         ]
     },
     
@@ -150,9 +162,13 @@ def generate_python_enums(output_file: str) -> None:
     print(f"Python枚举文件已生成: {output_file}")
 
 
-def generate_javascript_enums(output_file: str) -> None:
+def generate_javascript_enums(output_file: str, module_type: str = 'es') -> None:
     """
     生成JavaScript枚举文件
+    
+    Args:
+        output_file (str): 输出文件路径
+        module_type (str): 模块类型，可选值: 'es' (ES模块) 或 'none' (非模块化)
     """
     with open(output_file, 'w', encoding='utf-8') as f:
         # 写入文件头部注释
@@ -161,35 +177,83 @@ def generate_javascript_enums(output_file: str) -> None:
         # 只生成客户端需要的枚举（消息类型和数据键）
         client_enums = ["ClientMessageType", "ClientDataKey", "ServerMessageType", "ServerDataKey"]
         
-        for enum_name, enum_data in ENUMS_DATA.items():
-            if enum_name not in client_enums:
-                continue
+        # 根据模块类型生成不同的代码
+        if module_type == 'es':
+            # ES模块语法
+            for enum_name, enum_data in ENUMS_DATA.items():
+                if enum_name not in client_enums:
+                    continue
+                    
+                # 写入枚举描述
+                if enum_data.get('description'):
+                    f.write(f"// {enum_data['description']}\n")
                 
-            # 写入枚举描述
-            if enum_data.get('description'):
-                f.write(f"// {enum_data['description']}\n")
+                # 生成JavaScript枚举对象（使用export关键字）
+                f.write(f"export const {enum_name} = {{")
+                f.write("\n")
+                
+                # 写入枚举值
+                for value_tuple in enum_data['values']:
+                    if len(value_tuple) >= 3:
+                        name, value, comment = value_tuple[:3]
+                        f.write(f"    {name}: '{value}',  // {comment}\n")
+                    else:
+                        name, value = value_tuple[:2]
+                        f.write(f"    {name}: '{value}',\n")
+                
+                f.write("};")
+                f.write("\n")
+                f.write("\n")
+                
+            # 额外添加CommonJS导出，以便在Node.js环境中使用
+            f.write("// CommonJS导出，用于Node.js环境")
+            f.write("\ntry {")
+            f.write("\n")
+            for enum_name in client_enums:
+                if enum_name in ENUMS_DATA:
+                    f.write(f"    module.exports = module.exports || {{}};\n    module.exports.{enum_name} = {enum_name};\n")
+            f.write("} catch (e) {")
+            f.write("\n    // 浏览器环境，忽略CommonJS导出错误")
+            f.write("\n}")
+            f.write("\n")
+        else:
+            # 非模块化语法，直接挂载到window对象
+            # 先声明所有枚举对象
+            for enum_name, enum_data in ENUMS_DATA.items():
+                if enum_name not in client_enums:
+                    continue
+                    
+                # 写入枚举描述
+                if enum_data.get('description'):
+                    f.write(f"// {enum_data['description']}\n")
+                
+                # 生成JavaScript枚举对象
+                f.write(f"const {enum_name} = {{")
+                f.write("\n")
+                
+                # 写入枚举值
+                for value_tuple in enum_data['values']:
+                    if len(value_tuple) >= 3:
+                        name, value, comment = value_tuple[:3]
+                        f.write(f"    {name}: '{value}',  // {comment}\n")
+                    else:
+                        name, value = value_tuple[:2]
+                        f.write(f"    {name}: '{value}',\n")
+                
+                f.write("};")
+                f.write("\n")
+                f.write("\n")
             
-            # 生成JavaScript枚举对象（添加ES6 export关键字）
-            f.write(f"export const {enum_name} = {{\n")
-            
-            # 写入枚举值
-            for value_tuple in enum_data['values']:
-                if len(value_tuple) >= 3:
-                    name, value, comment = value_tuple[:3]
-                    f.write(f"    {name}: '{value}',  // {comment}\n")
-                else:
-                    name, value = value_tuple[:2]
-                    f.write(f"    {name}: '{value}',\n")
-            
-            f.write("};")
-            
-            # 添加导出语句（用于模块化）
-            f.write("\n// 导出枚举\ntry {\n")
-            f.write(f"    module.exports = module.exports || {{}};\n    module.exports.{enum_name} = {enum_name};\n")
-            f.write("} catch (e) {\n")
-            f.write("    // 浏览器环境，挂载到window对象\n")
-            f.write(f"    window.{enum_name} = {enum_name};\n")
-            f.write("}\n\n")
+            # 统一挂载到window对象
+            f.write("// 挂载到window对象，使其在全局范围内可用")
+            f.write("\nif (typeof window !== 'undefined') {")
+            f.write("\n")
+            for enum_name in client_enums:
+                if enum_name in ENUMS_DATA:
+                    f.write(f"    window.{enum_name} = {enum_name};")
+                    f.write("\n")
+            f.write("}")
+            f.write("\n")
 
     
     print(f"JavaScript枚举文件已生成: {output_file}")
@@ -218,7 +282,7 @@ def main() -> None:
     
     # 生成文件
     generate_python_enums(os.path.join(backend_dir, 'message_enums.py'))
-    generate_javascript_enums(os.path.join(static_js_dir, 'message_enums.js'))
+    generate_javascript_enums(os.path.join(static_js_dir, 'message_enums.js'), 'none')
     #generate_json_schema(os.path.join(backend_dir, 'message_enums_schema.json'))
     
     print("\n所有枚举文件生成完成！")

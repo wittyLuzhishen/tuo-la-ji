@@ -1,6 +1,7 @@
 __pycache__/
 old/
 venv*/
+/logs
 
 *.xls*
 *.doc*

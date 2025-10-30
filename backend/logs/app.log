@@ -233,3 +233,158 @@ RuntimeError: Install Flask with the 'async' extra in order to use async views.
 2025-10-29 17:37:05,911 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=0JIL3Sa3XRTrEpOnAAAH
 2025-10-29 17:37:06,696 - controllers_common - INFO - controllers_common.py:272 - 设置用户信息: 用户ID=0JIL3Sa3XRTrEpOnAAAH, 用户名=miao, 头像地址：http://127.0.0.1:5000/static/avatars/default.svg
 2025-10-29 17:53:56,719 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=0JIL3Sa3XRTrEpOnAAAH, 原因=
+2025-10-30 15:37:32,298 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 15:38:06,500 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 15:39:17,102 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 15:39:35,959 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=fOWpBEQ5sikAxo6qAAAB
+2025-10-30 15:39:36,049 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /@vite/client
+2025-10-30 15:40:00,290 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=123, 头像地址：/static/avatars/preset1.svg
+2025-10-30 15:41:22,750 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=fOWpBEQ5sikAxo6qAAAB, 原因=
+2025-10-30 15:41:23,773 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=O8ng3lJ16Sg8mT4CAAAD
+2025-10-30 15:41:23,969 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /@vite/client
+2025-10-30 15:41:27,258 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=O8ng3lJ16Sg8mT4CAAAD, 原因=
+2025-10-30 15:41:44,452 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=9XYtLlGvinH43kbtAAAF
+2025-10-30 15:41:44,759 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /@vite/client
+2025-10-30 15:41:50,047 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=9XYtLlGvinH43kbtAAAF, 原因=
+2025-10-30 15:41:59,086 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=gzNCiD9iiiyPvgRdAAAH
+2025-10-30 15:41:59,398 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /@vite/client
+2025-10-30 15:42:03,161 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=gzNCiD9iiiyPvgRdAAAH, 原因=
+2025-10-30 15:42:10,190 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=pxiTuOlGAx6wqJMrAAAJ
+2025-10-30 15:42:35,563 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 15:42:35,572 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 15:42:35,669 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 15:42:42,619 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=pxiTuOlGAx6wqJMrAAAJ, 原因=
+2025-10-30 15:42:43,961 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 15:42:43,996 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 15:42:44,037 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 15:42:44,073 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=fx7os_G7BMhHXyr6AAAL
+2025-10-30 15:43:19,253 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 15:43:19,986 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=Zr-taCbD_eyNSKCJAAAB
+2025-10-30 15:43:32,402 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=JA_oo2Nhv8lWJy2QAAAD
+2025-10-30 15:43:33,113 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=JA_oo2Nhv8lWJy2QAAAD, 原因=
+2025-10-30 15:43:40,648 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=CvL0nZWCl1czgoauAAAF
+2025-10-30 15:43:40,939 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=CvL0nZWCl1czgoauAAAF, 原因=
+2025-10-30 15:44:07,318 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=Zr-taCbD_eyNSKCJAAAB, 原因=
+2025-10-30 15:44:08,034 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 15:44:08,310 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 15:44:08,315 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 15:44:08,707 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=qpUwNdrIQZOUp-ofAAAH
+2025-10-30 15:46:00,846 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=qpUwNdrIQZOUp-ofAAAH, 原因=
+2025-10-30 15:46:01,563 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 15:46:01,995 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 15:46:02,019 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 15:46:02,185 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=ifANdpa3kTL9BfeOAAAJ
+2025-10-30 15:49:11,863 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 15:49:16,069 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=cKbHKMBQ5Bk8uuAGAAAB
+2025-10-30 15:49:36,823 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=g7wgV0S0_2Jj6UJDAAAD
+2025-10-30 15:49:37,139 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /@vite/client
+2025-10-30 15:49:37,361 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=g7wgV0S0_2Jj6UJDAAAD, 原因=
+2025-10-30 15:50:01,813 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=cKbHKMBQ5Bk8uuAGAAAB, 原因=
+2025-10-30 15:50:07,300 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 15:50:08,578 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=oQ16Co2JpRCgtJR7AAAB
+2025-10-30 15:50:11,756 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=oQ16Co2JpRCgtJR7AAAB, 原因=
+2025-10-30 15:50:13,256 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=Yoo7N8AFykA9cVBdAAAD
+2025-10-30 15:50:13,360 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 15:50:13,370 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 15:50:13,373 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 15:50:24,048 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 15:50:24,218 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=MEaEtcdL_fwWyyZwAAAB
+2025-10-30 15:50:39,360 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=MEaEtcdL_fwWyyZwAAAB, 原因=
+2025-10-30 15:50:40,775 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=YdFn5-D0oW0LXwDCAAAD
+2025-10-30 15:50:40,826 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 15:50:40,834 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 15:50:40,839 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 15:50:46,952 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=B5vrA8FN26KDIRHZAAAF
+2025-10-30 15:50:49,110 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=B5vrA8FN26KDIRHZAAAF, 原因=
+2025-10-30 15:51:00,598 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/default.svg
+2025-10-30 15:53:24,413 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=YdFn5-D0oW0LXwDCAAAD, 原因=
+2025-10-30 15:53:25,151 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 15:53:25,639 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=73Rra31YOCyExl4cAAAH
+2025-10-30 15:53:25,654 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 15:53:25,667 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 15:53:40,544 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=73Rra31YOCyExl4cAAAH, 用户名=luzhishen, 头像地址：/static/avatars/preset1.svg
+2025-10-30 15:54:05,134 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset2.svg
+2025-10-30 15:54:18,829 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset2.svg
+2025-10-30 16:05:15,799 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=73Rra31YOCyExl4cAAAH, 原因=
+2025-10-30 16:05:30,531 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 16:05:34,503 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 16:05:34,508 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 16:05:34,544 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:05:34,820 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=jISx2SZk92dn9HQ0AAAB
+2025-10-30 16:05:54,442 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=jISx2SZk92dn9HQ0AAAB, 用户名=luzhishen, 头像地址：/static/avatars/preset3.svg
+2025-10-30 16:06:02,211 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen666, 头像地址：/static/avatars/preset3.svg
+2025-10-30 16:06:23,974 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen666, 头像地址：/static/avatars/preset3.svg
+2025-10-30 16:07:10,066 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=jISx2SZk92dn9HQ0AAAB, 原因=
+2025-10-30 16:07:10,837 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 16:07:10,842 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 16:07:10,866 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:07:11,027 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=FW5SR-cKhC4huGVNAAAD
+2025-10-30 16:11:17,068 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=FW5SR-cKhC4huGVNAAAD, 原因=
+2025-10-30 16:11:18,250 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=-v35kU9zltyTrxnXAAAF
+2025-10-30 16:11:18,260 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/socket.io.min.js.map
+2025-10-30 16:11:18,266 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/js/bootstrap.bundle.min.js.map
+2025-10-30 16:11:18,273 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:18:32,569 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=-v35kU9zltyTrxnXAAAF, 原因=
+2025-10-30 16:18:33,740 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:18:33,813 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=J7wmVGLorXgY1q66AAAH
+2025-10-30 16:18:48,384 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=J7wmVGLorXgY1q66AAAH, 用户名=luzhishen, 头像地址：/static/avatars/preset1.svg
+2025-10-30 16:19:02,407 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset3.svg
+2025-10-30 16:23:20,909 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset4.svg
+2025-10-30 16:25:20,265 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=J7wmVGLorXgY1q66AAAH, 原因=
+2025-10-30 16:25:21,512 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:25:21,547 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=LdBoaant5bX5cMt7AAAJ
+2025-10-30 16:32:40,432 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=LdBoaant5bX5cMt7AAAJ, 原因=
+2025-10-30 16:32:41,861 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=JA0jRETPC_OL0lGqAAAL
+2025-10-30 16:32:41,879 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:32:52,755 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=JA0jRETPC_OL0lGqAAAL, 用户名=luzhishen, 头像地址：/static/avatars/preset2.svg
+2025-10-30 16:32:59,437 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset4.svg
+2025-10-30 16:33:07,888 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset4.svg
+2025-10-30 16:33:13,949 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset2.svg
+2025-10-30 16:33:17,022 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset4.svg
+2025-10-30 16:33:21,219 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset2.svg
+2025-10-30 16:34:12,854 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=, 用户名=luzhishen, 头像地址：/static/avatars/preset1.svg
+2025-10-30 16:35:40,890 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=JA0jRETPC_OL0lGqAAAL, 原因=
+2025-10-30 16:35:42,170 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:35:42,210 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=6zKN5usko_XbBQJtAAAN
+2025-10-30 16:35:55,913 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=6zKN5usko_XbBQJtAAAN, 用户名=luzhishen, 头像地址：/static/avatars/preset1.svg
+2025-10-30 16:39:52,174 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=6zKN5usko_XbBQJtAAAN, 原因=
+2025-10-30 16:40:00,837 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 16:40:00,946 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=W-0Qcj5f1OjciuiqAAAB
+2025-10-30 16:40:04,167 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=W-0Qcj5f1OjciuiqAAAB, 原因=
+2025-10-30 16:40:05,234 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:40:05,353 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=HpFHbBTq_0PHN_NjAAAD
+2025-10-30 16:40:11,320 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=HpFHbBTq_0PHN_NjAAAD, 用户名=luzhishen, 头像地址：/static/avatars/default.svg
+2025-10-30 16:40:25,811 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=HpFHbBTq_0PHN_NjAAAD, 用户名=luzhishen, 头像地址：/static/avatars/preset1.svg
+2025-10-30 16:42:12,874 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=HpFHbBTq_0PHN_NjAAAD, 原因=
+2025-10-30 16:42:14,095 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=oIBlSUQ7aPOzTUgiAAAF
+2025-10-30 16:42:14,111 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 16:43:00,624 - controllers_common - INFO - controllers_common.py:311 - 头像上传成功: 6effeca2a8014064a8ce8e36f47880a8_png
+2025-10-30 16:43:10,073 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=oIBlSUQ7aPOzTUgiAAAF, 用户名=luzhishen, 头像地址：/static/avatars/6effeca2a8014064a8ce8e36f47880a8_png
+2025-10-30 17:00:16,966 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=oIBlSUQ7aPOzTUgiAAAF, 原因=
+2025-10-30 17:00:18,469 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:00:18,679 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=NG2-LSoI6Zn90PPGAAAH
+2025-10-30 17:00:23,978 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=NG2-LSoI6Zn90PPGAAAH, 用户名=luzhishen, 头像地址：/static/avatars/preset2.svg
+2025-10-30 17:00:27,502 - controllers_common - INFO - controllers_common.py:271 - 设置用户信息: 用户ID=NG2-LSoI6Zn90PPGAAAH, 用户名=luzhishen, 头像地址：/static/avatars/tuolaji.png
+2025-10-30 17:00:49,881 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:01:31,782 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=NG2-LSoI6Zn90PPGAAAH, 原因=
+2025-10-30 17:01:33,109 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=hnUBJUDl_st_uueaAAAJ
+2025-10-30 17:01:33,282 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:01:40,650 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=hnUBJUDl_st_uueaAAAJ, 原因=
+2025-10-30 17:01:41,895 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=4LcpUTFH4Gs14OFsAAAL
+2025-10-30 17:01:41,926 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:01:46,129 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=4LcpUTFH4Gs14OFsAAAL, 原因=
+2025-10-30 17:01:47,411 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=5c9sP0F2K4Gdt8euAAAN
+2025-10-30 17:01:47,447 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:02:12,255 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=5c9sP0F2K4Gdt8euAAAN, 原因=
+2025-10-30 17:02:15,425 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 17:02:15,520 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=gc25OUS71dmTeSHUAAAB
+2025-10-30 17:02:17,822 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=gc25OUS71dmTeSHUAAAB, 原因=
+2025-10-30 17:02:19,144 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=z-DX3pmsQO0kjhkZAAAD
+2025-10-30 17:02:19,222 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:47:14,615 - root - INFO - app.py:20 - 启动拖拉机纸牌游戏后端服务...
+2025-10-30 17:47:23,390 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:48:18,869 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:48:35,162 - controllers_common - ERROR - controllers_common.py:425 - HTTP异常: Not Found (404) - The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - 未匹配的URL: /static/css/bootstrap.min.css.map
+2025-10-30 17:48:35,488 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=evNt9FshHNeS-pjHAAAB
+2025-10-30 17:49:05,166 - controllers_common - INFO - controllers_common.py:116 - 客户端断开连接: 用户=evNt9FshHNeS-pjHAAAB, 原因=
+2025-10-30 17:49:06,417 - controllers_common - INFO - controllers_common.py:75 - 客户端连接事件: 会话ID=C0sNXKNAkCDqQ6GKAAAD

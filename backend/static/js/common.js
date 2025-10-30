@@ -1,51 +1,21 @@
-// 用户信息相关的工具函数
+// 通用工具函数
+// 包含：本地存储用户信息、连接服务器、通过服务器重连接口获得user_id等功能
 
+//#region 用户信息本次存储相关开始
 // 统一的用户信息存储键名
-export const USER_INFO_KEY = 'userInfo';
-
-/**
- * 获取用户ID
- * @returns {string|null} 用户ID，如果不存在则返回null
- */
-export function getUserId() {
-    try {
-        const userInfo = localStorage.getItem(USER_INFO_KEY);
-        return userInfo ? JSON.parse(userInfo).user_id : null;
-    } catch (error) {
-        console.error('获取用户ID失败:', error);
-        return null;
-    }
-}
-
-/**
- * 保存用户ID
- * @param {string} userId - 用户ID
- */
-export function saveUserId(userId) {
-    try {
-        let userInfo = {};
-        const existingInfo = localStorage.getItem(USER_INFO_KEY);
-        if (existingInfo) {
-            userInfo = JSON.parse(existingInfo);
-        }
-        userInfo.user_id = userId;
-        localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
-    } catch (error) {
-        console.error('保存用户ID失败:', error);
-    }
-}
+const USER_INFO_KEY = 'userInfo';
 
 /**
  * 获取当前用户信息
- * @returns {Object|null} 用户对象，如果不存在则返回null
+ * @returns {Object|null} 用户信息对象，如果不存在则返回null
  */
-export function getCurrentUser() {
+function getCurrentUser() {
     try {
-        const savedUser = localStorage.getItem(USER_INFO_KEY);
-        return savedUser ? JSON.parse(savedUser) : null;
+        const userInfo = localStorage.getItem(USER_INFO_KEY);
+        return userInfo ? JSON.parse(userInfo) : {};
     } catch (error) {
-        console.error('获取用户信息失败:', error);
-        return null;
+        console.error('获取当前用户信息时发生错误:', error);
+        return {};
     }
 }
 
@@ -53,25 +23,24 @@ export function getCurrentUser() {
  * 保存当前用户信息
  * @param {Object} userInfo - 用户信息对象
  */
-export function saveCurrentUser(userInfo) {
+function saveCurrentUser(userInfo) {
     try {
-        // 只保存必要的用户信息，不包含金币
-        const userDataToSave = {
-            user_id: userInfo.user_id,
-            username: userInfo.username,
-            avatar_url: userInfo.avatar_url
-        };
-        localStorage.setItem(USER_INFO_KEY, JSON.stringify(userDataToSave));
+        console.log('保存用户信息:', userInfo);
+        localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
     } catch (error) {
-        console.error('保存用户信息失败:', error);
+        console.error('保存当前用户信息时发生错误:', error);
     }
 }
 
 /**
  * 清除用户信息
  */
-export function clearUserInfo() {
-    localStorage.removeItem(USER_INFO_KEY);
+function clearUserInfo() {
+    try {
+        localStorage.removeItem(USER_INFO_KEY);
+    } catch (error) {
+        console.error('清除用户信息时发生错误:', error);
+    }
 }
 
 /**
@@ -81,443 +50,370 @@ export function clearUserInfo() {
  * @param {string} user_id - 用户ID（可选）
  * @returns {Object} 用户对象
  */
-export function createUserObject(username, avatar_url, user_id = null) {
+function createUserInfoObject(username, avatar_url, user_id = null) {
     const userObject = {
-        username: username,
-        avatar_url: avatar_url
+        [ClientDataKey.Username]: username,
+        [ClientDataKey.AvatarURL]: avatar_url
     };
     if (user_id) {
-        userObject.user_id = user_id;
+        userObject[ClientDataKey.UserID] = user_id;
     }
+    console.log('创建用户对象:', userObject);
     return userObject;
 }
 
 /**
- * 初始化Socket.IO连接
- * @param {Object} options - 选项对象
- * @param {Function} options.onUserIdAssigned - 用户ID分配回调
- * @param {Function} options.customConnectedHandler - 自定义连接处理回调
- * @returns {Object|null} Socket对象或null
+ * 获取用户ID
+ * @returns {string|null} 用户ID，如果不存在则返回null
  */
-export function initSocketConnection(options = {}) {
-    // 确保Socket.IO已加载
-    if (typeof io === 'undefined') {
-        console.error('Socket.IO未加载');
+function getUserId() {
+    try {
+        const userInfo = getCurrentUser();
+        if (userInfo) {
+            return userInfo[ClientDataKey.UserID] || '';
+        }
+        return '';
+    } catch (error) {
+        console.error('获取用户ID时发生错误:', error);
+        return '';
+    }
+}
+
+/**
+ * 保存用户ID
+ * @param {string} userId - 用户ID
+ */
+function saveUserId(userId) {
+    try {
+        console.log('保存用户ID:', userId);
+        const userInfo = localStorage.getItem(USER_INFO_KEY);
+        if (userInfo) {
+            const parsedInfo = JSON.parse(userInfo);
+            parsedInfo[ClientDataKey.UserID] = userId;
+            saveCurrentUser(parsedInfo);
+        } else {
+            saveCurrentUser(createUserInfoObject('', '', userId));
+        }
+    } catch (error) {
+        console.error('保存用户ID时发生错误:', error);
+        saveCurrentUser(createUserInfoObject('', '', userId));
+    }
+}
+//#endregion 用户信息本次存储相关结束
+
+//#region socketio 连接相关
+/**
+ * 初始化Socket连接
+ * @param {string} serverUrl - 服务器URL
+ * @param {Object} options - Socket连接选项
+ * @returns {Object|null} Socket实例或null
+ */
+function initSocketConnection(serverUrl = '/', options = {},
+    onDisconnectCallback, onConnectErrorCallback) {
+    try {
+        console.log('初始化Socket连接:', serverUrl, options);
+
+        // 检查socket.io是否已加载
+        if (typeof io === 'undefined') {
+            console.warn('Socket.IO 未加载，返回null');
+            return null;
+        }
+
+        // 创建Socket实例
+        const socket = io(serverUrl, options);
+
+        // 连接成功事件
+        socket.on(ServerMessageType.Connect, function () {
+            console.log('Socket连接成功');
+            try {
+                sendReconnectWithID();
+            } catch (error) {
+                console.error('连接成功回调函数执行时发生错误:', error);
+            }
+        });
+
+        // 连接断开事件
+        socket.on(ServerMessageType.Disconnect, function (reason) {
+            console.log('Socket连接断开:', reason);
+            if (typeof onDisconnectCallback === 'function') {
+                try {
+                    onDisconnectCallback(reason);
+                } catch (error) {
+                    console.error('断开连接回调函数执行时发生错误:', error);
+                }
+            }
+        });
+
+        // 添加连接错误处理，但不中断程序
+        socket.on(ServerMessageType.ConnectError, function (error) {
+            console.warn('Socket连接错误:', error.message || error);
+            // 不抛出错误，允许程序继续运行
+            if (typeof onConnectErrorCallback === 'function') {
+                try {
+                    onConnectErrorCallback(error);
+                } catch (error) {
+                    console.error('连接错误回调函数执行时发生错误:', error);
+                }
+            }
+        });
+
+        // 定时检查socket连接
+        setTimeout(() => {
+            if (socket && !socket.connected) {
+                console.warn('Socket连接超时，可能需要启动服务器或检查网络连接');
+                // 不强制断开连接，让Socket.io尝试重连
+            }
+        }, options.reconnectionAttempts * options.reconnectionDelay || 5000);
+
+        return socket;
+    } catch (error) {
+        console.error('初始化Socket连接时发生错误:', error);
+        // 返回null而不是抛出错误，允许程序在没有Socket的情况下继续运行
         return null;
     }
-
-    // 创建Socket.IO连接
-    const socket = io();
-    
-    // 连接成功
-    socket.on('connect', function() {
-        console.log('连接成功');
-    });
-    
-    // 接收服务器分配的user_id并存储
-    socket.on(ServerMessageType.UserIDAssigned, function(data) {
-        const user_id = data.user_id;
-        console.log('收到服务器分配的user_id:', user_id);
-        saveUserId(user_id);
-        
-        if (typeof options.onUserIdAssigned === 'function') {
-            options.onUserIdAssigned(data); // 传递完整数据对象
-        }
-    });
-    
-    return socket;
 }
 
 /**
- * 设置Socket.IO基础事件监听器
- * @param {Object} socket - Socket.IO对象
- * @param {Object} options - 选项对象
- * @param {Function} options.onConnect - 连接成功回调
- * @param {Function} options.onDisconnect - 连接断开回调
- * @param {Function} options.onUserIdAssigned - 用户ID分配回调
- * @param {Function} options.onUserInfoUpdated - 用户信息更新回调
- * @param {Function} options.onUsernameError - 用户名错误回调
- * @param {Function} options.customConnectedHandler - 自定义连接处理回调
+ * 设置Socket事件监听器
+ * @param {Object} socket - Socket实例
+ * @param {Object} eventHandlers - 事件处理函数对象，格式为{事件类型: 处理函数}
  */
-export function setupBasicSocketListeners(socket, options = {}) {
-    if (!socket) return;
-
-    const { onConnect, onDisconnect, onUserIdAssigned, onUserInfoUpdated, onUsernameError, customConnectedHandler } = options;
-
-    // 连接成功
-    socket.on('connect', function() {
-        console.log('已连接到服务器');
-        if (typeof onConnect === 'function') {
-            onConnect();
-        }
-    });
-
-    // 接收服务器分配的user_id并存储
-    socket.on(ServerMessageType.UserIDAssigned, function(data) {
-        const user_id = data.user_id;
-        console.log('收到服务器分配的user_id:', user_id);
-        saveUserId(user_id);
-        if (typeof onUserIdAssigned === 'function') {
-            onUserIdAssigned(data); // 传递完整数据对象
-        }
-    });
-
-    // 用户名设置成功/用户信息更新
-    socket.on(ServerMessageType.UserInfoUpdated, function(data) {
-        // 确保数据格式与我们的期望一致
-        const user = {
-            username: data.user.username,
-            avatar_url: data.user.avatar || data.user.avatar_url,
-            coins: data.user.coins || 0,
-            user_id: data.user.user_id
-        };
-        saveCurrentUser(user);
-        if (typeof onUserInfoUpdated === 'function') {
-            onUserInfoUpdated(user);
-        }
-    });
-
-    // 连接断开
-    socket.on('disconnect', function() {
-        console.log('与服务器连接断开');
-        if (typeof onDisconnect === 'function') {
-            onDisconnect();
-        }
-    });
-
-    // 连接错误
-    socket.on('connect_error', function(error) {
-        console.log('连接错误:', error);
-    });
-    
-    // 服务器连接确认
-    socket.on(ServerMessageType.Connected, function(data) {
-        console.log('收到服务器连接确认:', data);
-        
-        // 尝试使用保存的用户ID进行重连
-        attemptReconnectWithSavedId(socket);
-        
-        // 如果有自定义处理函数，调用它
-        if (typeof customConnectedHandler === 'function') {
-            customConnectedHandler(data);
-        }
-    });
-    
-    // 用户名错误
-    socket.on(ServerMessageType.UsernameError, function(data) {
-        console.log('用户名错误:', data);
-        if (typeof onUsernameError === 'function') {
-            onUsernameError(data);
-        }
-    });
-}
-
-/**
- * 使用保存的用户ID进行重连
- * @param {Object} socket - Socket.IO对象
- */
-export function attemptReconnectWithSavedId(socket) {
-    if (!socket) return;
-    
-    const savedUserId = getUserId();
-    if (savedUserId) {
-        console.log('使用保存的user_id进行重连:', savedUserId);
-        socket.emit(ClientMessageType.ReconnectWithID, { [ClientDataKey.UserID]: savedUserId });
-    } else {
-        console.log('没有保存的user_id，请求分配新ID');
-        socket.emit(ClientMessageType.ReconnectWithID, { [ClientDataKey.UserID]: null });
-    }
-}
-
-/**
- * 获取清理后的头像URL（移除时间戳）
- * @param {string} avatarUrl - 头像URL
- * @returns {string} 清理后的头像URL
- */
-export function getCleanAvatarUrl(avatarUrl) {
-    if (!avatarUrl) return null;
-    
-    // 移除已有的时间戳参数，确保只保存基础URL
-    let cleanAvatarUrl = avatarUrl;
-    if (avatarUrl.includes('?')) {
-        const urlParts = avatarUrl.split('?');
-        const queryParams = new URLSearchParams(urlParts[1]);
-        queryParams.delete('t'); // 删除时间戳参数
-
-        if (queryParams.toString()) {
-            cleanAvatarUrl = `${urlParts[0]}?${queryParams.toString()}`;
-        } else {
-            cleanAvatarUrl = urlParts[0];
-        }
-    }
-    
-    return cleanAvatarUrl;
-}
-
-/**
- * 设置头像URL（添加时间戳防止缓存）
- * @param {string} avatarUrl - 头像URL
- * @returns {string} 添加时间戳后的头像URL
- */
-export function getAvatarUrlWithTimestamp(avatarUrl) {
-    if (!avatarUrl) return null;
-    
-    // 先获取清理后的URL
-    const cleanAvatarUrl = getCleanAvatarUrl(avatarUrl);
-
-    // 添加新的时间戳防止浏览器缓存
-    const timestamp = new Date().getTime();
-    return cleanAvatarUrl.includes('?')
-        ? `${cleanAvatarUrl}&t=${timestamp}`
-        : `${cleanAvatarUrl}?t=${timestamp}`;
-}
-
-/**
- * 上传头像
- * @param {Object} socket - Socket.IO对象
- * @param {string} userId - 用户ID
- * @param {string} username - 用户名
- */
-export function uploadAvatar(socket, userId, username) {
-    console.log('点击上传头像按钮');
-    const fileInput = document.getElementById('avatar-upload');
-    if (!fileInput || fileInput.files.length === 0) {
-        alert('请选择一个文件');
+function setupSocketListeners(socket, eventHandlers = {}) {
+    if (!socket) {
+        console.error('Socket实例不存在');
         return;
     }
-    
-    const file = fileInput.files[0];
-    console.log('选择的文件:', file);
-    const formData = new FormData();
-    formData.append('file', file);
 
-    console.log('Socket状态:', socket ? '已连接' : '未连接');
-    console.log('User ID:', userId);
+    // 默认的事件处理函数
+    const defaultHandlers = {
+        // 可以添加默认的事件处理逻辑
+        [ServerMessageType.UserIDAssigned]: receiveUserIDAssigned,
+    };
 
-    // 上传文件
-    console.log('开始上传文件到 /upload_avatar');
-    fetch('/upload_avatar', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        console.log('上传响应状态:', response.status);
-        if (!response.ok) {
-            throw new Error(`HTTP错误! 状态码: ${response.status}`);
-        }
-        return response.json().catch(err => {
-            console.error('解析JSON响应失败:', err);
-            // 尝试获取原始文本
-            return response.text().then(text => {
-                console.log('原始响应文本:', text);
-                throw new Error('服务器返回了非JSON响应');
-            });
-        });
-    })
-    .then(data => {
-        console.log('上传成功，服务器返回:', data);
-        if (data.avatar_url || data.url) {
-            // 使用可能的头像URL字段
-            const avatarUrl = data.avatar_url || data.url;
-            // 添加时间戳防止浏览器缓存
-            const avatarUrlWithTimestamp = getAvatarUrlWithTimestamp(avatarUrl);
+    // 合并用户提供的处理函数和默认处理函数
+    const handlers = { ...defaultHandlers, ...eventHandlers };
 
-            // 更新预览
-            const avatarPreview = document.getElementById('avatar-preview');
-            if (avatarPreview) {
-                avatarPreview.src = avatarUrlWithTimestamp;
+    // 为每个事件添加监听器
+    /**
+     * 创建安全的事件处理函数，捕获并记录异常
+     * @param {Function} handler - 原始事件处理函数
+     * @param {string} event - 事件名称
+     * @returns {Function} 包装后的安全处理函数
+     */
+    function createSafeEventHandler(handler, event) {
+        return function (...args) {
+            try {
+                // 保留原始this上下文并传递所有参数
+                return handler.apply(this, args);
+            } catch (error) {
+                console.error(`处理事件 ${event} 时发生错误:`, error);
+                // 可选：添加更多错误处理逻辑，如错误上报等
+                // 不抛出异常，确保其他事件处理不受影响
             }
+        };
+    }
 
-            // 清除其他选中状态
-            document.querySelectorAll('.avatar-option').forEach(option => {
-                option.classList.remove('selected');
-                if (option.querySelector('img')) {
-                    option.querySelector('img').style.border = 'none';
-                }
-            });
-
-            // 如果有socket连接，更新头像
-            if (socket && userId) {
-                const cleanAvatarUrl = getCleanAvatarUrl(avatarUrlWithTimestamp);
-                socket.emit(ClientMessageType.SetAvatar, { [ClientDataKey.AvatarURL]: cleanAvatarUrl });
-            }
-
-            // 保存用户信息到localStorage
-            const currentUser = getCurrentUser() || {};
-            const updatedUser = createUserObject(
-                currentUser.username || username || '',
-                avatarUrlWithTimestamp,
-                currentUser.user_id || userId
-            );
-            saveCurrentUser(updatedUser);
-            
-            alert('头像上传成功');
-        } else {
-            alert('头像上传失败: ' + (data.error || '未知错误'));
+    // 为每个事件添加安全的监听器
+    for (const [event, handler] of Object.entries(handlers)) {
+        if (typeof handler === 'function') {
+            // 使用包装函数来捕获异常
+            socket.on(event, createSafeEventHandler(handler, event));
         }
-    })
-    .catch(error => {
-        console.error('上传头像时发生错误:', error);
-        alert('头像上传失败: ' + error.message);
+    }
+}
+
+function sendReconnectWithID() {
+    let savedUserId = getUserId();
+    savedUserId = savedUserId || '';
+    console.log(`发送重新连接请求, 用户ID: ${savedUserId}`);
+    socket.emit(ClientMessageType.ReconnectWithID, {
+        [ClientDataKey.UserID]: savedUserId
     });
 }
 
+function receiveUserIDAssigned(data) {
+    if (data[ServerDataKey.UserID]) {
+        console.log('服务器分配的用户ID:', data[ServerDataKey.UserID]);
+        saveUserId(data[ServerDataKey.UserID]);
+        return;
+    }
+    console.warn('服务器未返回用户ID');
+}
+//#endregion socketio 连接相关结束
+
+
+//#region  模态对话框显示
 /**
  * 显示模态框
- * @param {string} modalId - 模态框ID
+ * @param {string} modalId - 模态框的ID
  */
-export function showModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'block';
-        modal.classList.add('show');
+function showModal(modalId) {
+    try {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('show');
+            modal.style.display = 'block';
+            // 添加背景遮罩
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.id = `${modalId}-backdrop`;
+            document.body.appendChild(backdrop);
+            // 防止背景滚动
+            document.body.style.overflow = 'hidden';
+        }
+    } catch (error) {
+        console.error('显示模态框时发生错误:', error);
     }
 }
 
 /**
  * 隐藏模态框
- * @param {string} modalId - 模态框ID
+ * @param {string} modalId - 模态框的ID
  */
-export function hideModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
-    }
-}
-
-/**
- * 加载预设头像
- * @param {string} gridSelector - 头像网格的CSS选择器
- * @param {Function} onAvatarSelect - 头像选择回调函数
- */
-export function loadPresetAvatars(gridSelector, onAvatarSelect) {
-    const avatarGrid = document.querySelector(gridSelector);
-    if (!avatarGrid) return;
-    
-    const presetAvatars = [
-        '/static/avatars/default.svg',
-        '/static/avatars/preset1.svg',
-        '/static/avatars/preset2.svg',
-        '/static/avatars/preset3.svg',
-        '/static/avatars/preset4.svg',
-        '/static/avatars/tuolaji.png'
-    ];
-    
-    presetAvatars.forEach(avatar => {
-        const avatarOption = document.createElement('div');
-        avatarOption.className = 'avatar-option';
-        avatarOption.innerHTML = `<img src="${avatar}" alt="头像" style="width: 50px; height: 50px; cursor: pointer;">`;
-        
-        avatarOption.addEventListener('click', function() {
-            if (typeof onAvatarSelect === 'function') {
-                onAvatarSelect(avatar);
+function hideModal(modalId) {
+    try {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            // 移除背景遮罩
+            const backdrop = document.getElementById(`${modalId}-backdrop`);
+            if (backdrop) {
+                backdrop.remove();
             }
-        });
-        
-        avatarGrid.appendChild(avatarOption);
-    });
-}
-
-/**
- * 验证用户名
- * @param {string} username - 用户名
- * @returns {Object} 包含valid和message属性的对象
- */
-export function validateUsername(username) {
-    if (!username || username.trim() === '') {
-        return { valid: false, message: '用户名不能为空' };
-    }
-    
-    if (username.length < 2) {
-        return { valid: false, message: '用户名至少需要2个字符' };
-    }
-    
-    if (username.length > 20) {
-        return { valid: false, message: '用户名不能超过20个字符' };
-    }
-    
-    if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) {
-        return { valid: false, message: '用户名只能包含字母、数字、下划线和中文字符' };
-    }
-    
-    return { valid: true, message: '' };
-}
-
-/**
- * 更新用户信息显示（从common.js导出）
- * @description 更新页面上的用户昵称和头像显示
- */
-export function updateUserDisplayFromCommon() {
-    // 获取当前用户信息
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-    
-    // 更新用户名显示
-    if (currentUser.username) {
-        // 尝试不同的用户名字段ID
-        const usernameElements = [
-            document.getElementById('player-name'),
-            document.getElementById('user-name'),
-            document.getElementById('username')
-        ];
-        
-        usernameElements.forEach(element => {
-            if (element) {
-                // 检查元素是否已经包含前缀，如果没有则添加
-                if (!element.textContent.includes('玩家昵称：') && !element.textContent.includes('用户名：')) {
-                    element.textContent = `玩家昵称：${currentUser.username}`;
-                }
-            }
-        });
-    }
-    
-    // 更新头像显示
-    if (currentUser.avatar_url) {
-        // 获取带有时间戳的头像URL，防止缓存问题
-        const avatarUrlWithTimestamp = getAvatarUrlWithTimestamp(currentUser.avatar_url);
-        
-        // 尝试不同的头像元素ID
-        const avatarElements = [
-            document.getElementById('user-avatar'),
-            document.getElementById('avatar-preview'),
-            document.getElementById('player-avatar')
-        ];
-        
-        avatarElements.forEach(element => {
-            if (element) {
-                element.src = avatarUrlWithTimestamp;
-            }
-        });
-    }
-}
-
-// 保留兼容模式，将函数挂载到window对象上，确保旧代码仍然可以工作
-(function() {
-    const exportedFunctions = {
-        getUserId,
-        saveUserId,
-        getCurrentUser,
-        saveCurrentUser,
-        clearUserInfo,
-        createUserObject,
-        initSocketConnection,
-        setupBasicSocketListeners,
-        attemptReconnectWithSavedId,
-        getAvatarUrlWithTimestamp,
-        getCleanAvatarUrl,
-        uploadAvatar,
-        showModal,
-        hideModal,
-        loadPresetAvatars,
-        validateUsername,
-        updateUserDisplayFromCommon
-    };
-    
-    // 将所有函数挂载到window对象上
-    for (const [key, value] of Object.entries(exportedFunctions)) {
-        if (typeof window[key] === 'undefined') {
-            window[key] = value;
+            // 恢复背景滚动
+            document.body.style.overflow = '';
         }
+    } catch (error) {
+        console.error('隐藏模态框时发生错误:', error);
     }
-})();
+}
+
+/**
+ * 显示提示消息（Toast）
+ * @param {string} title - 提示标题
+ * @param {string} message - 提示内容
+ * @param {number} duration - 显示时长（毫秒），默认3000ms
+ */
+function showToast(title, message, duration = 3000) {
+    try {
+        // 检查是否已存在toast容器，如果不存在则创建
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.style.position = 'fixed';
+            toastContainer.style.top = '20px';
+            toastContainer.style.right = '20px';
+            toastContainer.style.zIndex = '9999';
+            toastContainer.style.display = 'flex';
+            toastContainer.style.flexDirection = 'column';
+            toastContainer.style.gap = '10px';
+            document.body.appendChild(toastContainer);
+        }
+
+        // 创建toast元素
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '6px';
+        toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        toast.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        toast.style.cursor = 'pointer';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        toast.style.transition = 'opacity 0.3s, transform 0.3s';
+
+        // 根据标题设置样式
+        if (title === '错误') {
+            toast.style.backgroundColor = '#f8d7da';
+            toast.style.border = '1px solid #f5c6cb';
+            toast.style.color = '#721c24';
+        } else if (title === '警告') {
+            toast.style.backgroundColor = '#fff3cd';
+            toast.style.border = '1px solid #ffeaa7';
+            toast.style.color = '#856404';
+        } else if (title === '提示') {
+            toast.style.backgroundColor = '#d1ecf1';
+            toast.style.border = '1px solid #bee5eb';
+            toast.style.color = '#0c5460';
+        } else {
+            toast.style.backgroundColor = '#f8f9fa';
+            toast.style.border = '1px solid #e9ecef';
+            toast.style.color = '#212529';
+        }
+
+        // 设置toast内容
+        toast.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
+            <div style="font-size: 14px;">${message}</div>
+        `;
+
+        // 添加到容器
+        toastContainer.appendChild(toast);
+
+        // 触发重排，然后显示动画
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 10);
+
+        // 设置自动关闭
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+
+            // 动画结束后移除元素
+            setTimeout(() => {
+                if (toast.parentNode === toastContainer) {
+                    toastContainer.removeChild(toast);
+                }
+
+                // 如果容器为空，移除容器
+                if (toastContainer.children.length === 0) {
+                    toastContainer.remove();
+                }
+            }, 300);
+        }, duration);
+
+        // 添加点击关闭
+        toast.addEventListener('click', () => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+
+            setTimeout(() => {
+                if (toast.parentNode === toastContainer) {
+                    toastContainer.removeChild(toast);
+                }
+
+                if (toastContainer.children.length === 0) {
+                    toastContainer.remove();
+                }
+            }, 300);
+        });
+
+    } catch (error) {
+        console.error('显示Toast时发生错误:', error);
+        // 降级为alert
+        alert(`${title}: ${message}`);
+    }
+}
+//#endregion  模态对话框显示
+
+//#region 导出
+window.getUserId = getUserId;
+window.saveUserId = saveUserId;
+window.getCurrentUser = getCurrentUser;
+window.saveCurrentUser = saveCurrentUser;
+window.clearUserInfo = clearUserInfo;
+window.createUserInfoObject = createUserInfoObject;
+window.initSocketConnection = initSocketConnection;
+window.setupSocketListeners = setupSocketListeners;
+window.showModal = showModal;
+window.hideModal = hideModal;
+window.showToast = showToast;
+
+// 常量也挂载到window上
+window.USER_INFO_KEY = USER_INFO_KEY;
+
+//#endregion 导出

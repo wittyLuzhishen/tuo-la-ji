@@ -22,12 +22,12 @@ from flask import jsonify, render_template, request, send_from_directory, send_f
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import HTTPException
 from app import app
-from message_enums import (ClientMessageType, ClientDataKey)
+from message_enums import (ClientMessageType, ClientDataKey, ServerDataKey)
 from extensions import socketio
 from utils import require_data, get_logger, safe_get_string
 from biz_common import (handle_connect, handle_continue_game, handle_create_room, 
     handle_get_room_details, handle_get_room_list, handle_join_room, handle_kick_player, 
-    handle_leave_room, handle_disconnect, handle_ready, handle_set_avatar, handle_set_userinfo, 
+    handle_leave_room, handle_disconnect, handle_ready, handle_set_userinfo, 
     handle_sit_down, handle_stand_up, handle_update_settings, handle_reconnect
 )
 
@@ -134,7 +134,6 @@ def get_room_list():
 def get_room_details(data):
     """
     处理获取房间详情事件
-
     """
     room_id = safe_get_string(data, ClientDataKey.RoomID.value, '未知房间')
     logger.debug(f"请求获取房间详情: {room_id}")
@@ -273,18 +272,6 @@ def set_userinfo(data):
     handle_set_userinfo(user_id, username, avatar_url)
 
 
-@socketio.on(ClientMessageType.SetAvatar.value)
-@require_data
-def set_avatar(data):
-    """
-    处理设置头像事件
-    """
-    user_id = safe_get_string(data, ClientDataKey.UserID.value, "")
-    avatar_url = safe_get_string(data, ClientDataKey.AvatarURL.value, "")
-    logger.info(f"设置头像: 用户={user_id}, 头像URL={avatar_url}")
-    handle_set_avatar(user_id, avatar_url)
-
-
 @app.route("/upload_avatar", methods=["POST"])
 def upload_avatar():
     """
@@ -292,7 +279,6 @@ def upload_avatar():
     接收前端上传的头像文件，验证后保存到服务器
     
     支持的文件类型: PNG, JPG, JPEG, GIF, WEBP
-    文件大小限制: 16MB
     
     Returns:
         JSON: 包含头像URL或错误信息的响应
@@ -323,7 +309,7 @@ def upload_avatar():
             # 返回文件访问URL
             file_url = f"/static/avatars/{filename}"
             logger.info(f"头像上传成功: {filename}")
-            return jsonify({"url": file_url})
+            return jsonify({ServerDataKey.AvatarURL.value: file_url})
         
         logger.warning(f"不支持的文件类型: {file.filename}")
         return jsonify({"error": "不支持的文件类型"}), 400
@@ -485,6 +471,6 @@ def request_entity_too_large(e):
         "error": True,
         "code": 413,
         "message": "请求实体过大",
-        "description": f"上传的文件超过了最大限制 (16MB)"
+        "description": f"上传的文件超过了最大限制"
     }
     return jsonify(response), 413

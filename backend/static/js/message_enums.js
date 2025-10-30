@@ -4,7 +4,7 @@
  */
 
 // 客户端消息类型枚举
-export const ClientMessageType = {
+const ClientMessageType = {
     Connect: 'connect',  // 连接消息
     Disconnect: 'disconnect',  // 断开连接消息
     ReconnectWithID: 'reconnect_with_id',  // 重新连接消息
@@ -27,17 +27,9 @@ export const ClientMessageType = {
     Raise: 'raise',  // 加注消息
     Showdown: 'showdown',  // 开牌消息
 };
-// 导出枚举
-try {
-    module.exports = module.exports || {};
-    module.exports.ClientMessageType = ClientMessageType;
-} catch (e) {
-    // 浏览器环境，挂载到window对象
-    window.ClientMessageType = ClientMessageType;
-}
 
 // 客户端传来的数据键枚举
-export const ClientDataKey = {
+const ClientDataKey = {
     RoomID: 'room_id',  // 房间ID，类型：str
     RoomName: 'room_name',  // 房间名称，类型：str
     Ready: 'ready',  // 准备状态，类型：bool
@@ -51,18 +43,12 @@ export const ClientDataKey = {
     PlayerIdToBeKicked: 'player_id_to_be_kicked',  // 被踢出玩家ID，类型：str
     PlayerIdToBeShowdown: 'player_id_to_be_showdown',  // 被开牌玩家ID，类型：str
 };
-// 导出枚举
-try {
-    module.exports = module.exports || {};
-    module.exports.ClientDataKey = ClientDataKey;
-} catch (e) {
-    // 浏览器环境，挂载到window对象
-    window.ClientDataKey = ClientDataKey;
-}
 
 // 服务器消息类型枚举
-export const ServerMessageType = {
-    Connected: 'connected',  // 连接/重连成功消息
+const ServerMessageType = {
+    Connect: 'connect',  // 连接/重连成功消息
+    Disconnect: 'disconnect',  // 断开连接消息
+    ConnectError: 'connect_error',  // 连接/重连错误消息
     UserIDAssigned: 'user_id_assigned',  // 用户ID分配消息
     LostConnection: 'lost_connection',  // 玩家失去连接消息
     ReconnectRestore: 'reconnect_restore',  // 重新加入房间、载入房间信息消息
@@ -85,29 +71,23 @@ export const ServerMessageType = {
     PlayerLeaved: 'player_leaved',  // 玩家离开消息
     RoomClosed: 'room_closed',  // 房间关闭消息
     PlayerFolded: 'player_folded',  // 玩家弃牌消息
-    AvatarSet: 'avatar_set',  // 玩家设置头像消息
 };
-// 导出枚举
-try {
-    module.exports = module.exports || {};
-    module.exports.ServerMessageType = ServerMessageType;
-} catch (e) {
-    // 浏览器环境，挂载到window对象
-    window.ServerMessageType = ServerMessageType;
-}
 
 // 服务器消息键枚举
-export const ServerDataKey = {
+const ServerDataKey = {
     UserID: 'user_id',  // 玩家ID，类型：str
     UserName: 'user_name',  // 用户名，类型：str
     ActivePlayersCount: 'active_players_count',  // 活动玩家数，类型：int
     RoomID: 'room_id',  // 房间ID，类型：str
     Room: 'room',  // 房间信息，类型：dict
+    RoomName: 'room_name',  // 房间名称，类型：str
     Players: 'players',  // 玩家信息列表，类型：list，每个元素为玩家信息字典，字典键为PlayerKey中的值
     Seats: 'seats',  // 座位信息列表，类型：list，每个元素为座位信息字典，字典键为PlayerKey中的值
     Owner: 'owner',  // 房主ID，类型：str，创建房间或有玩家离开时设置
+    OwnerName: 'owner_name',  // 房主用户名，类型：str，创建房间或有玩家离开时设置
     Settings: 'settings',  // 游戏设置，类型：dict
     GameStatus: 'game_status',  // 游戏状态，类型：str，值域：GameStatus，开始和结束游戏时设置
+    PlayerCount: 'player_count',  // 玩家数量，类型：int
     LastWinner: 'last_winner',  // 上一局的赢家ID，用于确定下一局的庄家，类型：str，游戏结束时设置
     GameLog: 'game_log',  // 游戏日志，类型：list
     Status: 'status',  // 房间状态，类型：str，值域：RoomStatus
@@ -125,13 +105,20 @@ export const ServerDataKey = {
     Cards: 'cards',  // 玩家手牌，类型：list，每个元素为牌组中的牌元组（rank, suit）
     CallAmount: 'call_amount',  // 玩家加注金额，类型：int
     RaiseAmount: 'raise_amount',  // 玩家选择加注，之后付出的注数，类型：int
+    IsDiffentSuit235GreaterThanThreeOfAKind: 'is_diffent_suit_235_greater_than_three_of_a_kind',  // 是否不同花色235大于豹子（在存在豹子的情况下）
+    IsA23AsStraight: 'is_a23_as_straight',  // 是否将A23作为顺子
+    InitialCoins: 'initial_coins',  // 初始金币数
+    BaseBet: 'base_bet',  // 底注
+    MaxBet: 'max_bet',  // 单注封顶金币数
+    MaxRounds: 'max_rounds',  // 手数封顶数
+    MaxPotAmount: 'max_pot_amount',  // 当局底池最大数额
+    MaxPlayerNumber: 'max_player_number',  // 房主设置的房间最大人数
 };
-// 导出枚举
-try {
-    module.exports = module.exports || {};
-    module.exports.ServerDataKey = ServerDataKey;
-} catch (e) {
-    // 浏览器环境，挂载到window对象
+
+// 挂载到window对象，使其在全局范围内可用
+if (typeof window !== 'undefined') {
+    window.ClientMessageType = ClientMessageType;
+    window.ClientDataKey = ClientDataKey;
+    window.ServerMessageType = ServerMessageType;
     window.ServerDataKey = ServerDataKey;
 }
-

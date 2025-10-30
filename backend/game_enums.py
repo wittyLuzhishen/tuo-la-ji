@@ -16,7 +16,6 @@ class RoomKey(Enum):
     CurrentBet = "current_bet"  # 当前房间下注金额，类型：int
     ID = "id" # 房间ID，类型：str
     Name = "name"  # 房间名称，类型：str
-    PlayerCount = "player_count" # 房间当前玩家数，类型：int
 
     #ReadyPlayers = "ready_players"  # 存储准备就绪的玩家，类型：set，存储玩家ID
     #LastSeatTime = "last_seat_time"  # 记录每个玩家最后一次坐下的时间，类型：dict，键为玩家ID，值为时间戳

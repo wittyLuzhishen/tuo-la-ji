@@ -9,26 +9,16 @@
     <link rel="stylesheet" href="/static/css/room.css">
     <!-- Socket.IO客户端库加载 - 使用主要CDN和备用CDN -->
     <script>var socketIOLoaded = false;</script>
-    <script id="socket-io-main" src="https://unpkg.com/socket.io-client@4.4.1/dist/socket.io.min.js"
+    <script id="socket-io-main" src="/static/js/socket.io.min.js"
         onload="socketIOLoaded = true;"></script>
-    <!-- 如果主CDN加载失败，尝试备用CDN -->
-    <script>setTimeout(function () {
-            if (!socketIOLoaded) {
-                console.log('主CDN加载失败，尝试备用CDN');
-                var script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js';
-                script.onload = function () { socketIOLoaded = true; };
-                document.head.appendChild(script);
-            }
-        }, 3000);</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
-    <!-- 引入枚举定义文件（作为模块导入） -->
-    <script type="module" src="/static/js/message_enums.js"></script>
-    <!-- 引入common.js文件（作为模块导入） -->
-    <script type="module" src="/static/js/common.js"></script>
-    <!-- 游戏逻辑JavaScript（作为模块导入） -->
-    <script type="module" src="/static/js/room.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入枚举定义文件 -->
+    <script src="/static/js/message_enums.js"></script>
+    <!-- 引入common.js文件 -->
+    <script src="/static/js/common.js"></script>
+    <!-- 游戏逻辑JavaScript -->
+    <script src="/static/js/room.js"></script>
 </head>
 
 <body>

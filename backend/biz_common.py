@@ -1,7 +1,7 @@
 import random
 # 直接导入eventlet，因为我们已经强制使用eventlet模式
 import eventlet
-from flask import session, request
+from flask import request
 from flask_socketio import emit, join_room as socketio_join_room, leave_room as socketio_leave_room
 import time
 
@@ -44,7 +44,7 @@ def handle_connect():
     
     # 向客户端发送连接成功消息，不包含user_id
     # 客户端收到此消息后，应决定是否发送reconnect_with_id请求
-    emit(ServerMessageType.Connected.value, {"connected": True})
+    #emit(ServerMessageType.Connected.value, {"connected": True})
     
     # 返回socket_id作为临时标识符，客户端应等待后续的user_id_assigned消息
     return socket_id
@@ -76,7 +76,7 @@ def handle_reconnect(user_id:str):
                 timer.cancel()
             
             # 保持原来的用户ID
-            emit(ServerMessageType.UserIDAssigned.value, {'user_id': user_id}, room=user_id)
+            emit(ServerMessageType.UserIDAssigned.value, {ServerDataKey.UserID.value: user_id}, room=user_id)
             # 获取用户原来所在的房间
             room_id = get_room_by_player_id(user_id)
             if room_id:
@@ -107,11 +107,11 @@ def handle_reconnect(user_id:str):
             # 重连超时，分配新的user_id
             print(f"用户{user_id}重连超时，分配新用户ID={socket_id}")
             user_id = socket_id
-            emit(ServerMessageType.UserIDAssigned.value, {'user_id': user_id}, room=user_id)
+            emit(ServerMessageType.UserIDAssigned.value, {ServerDataKey.UserID.value: user_id}, room=user_id)
     else:
         user_id = socket_id
         print(f"客户端未提供user_id，使用socket_id作为新的user_id={socket_id}")
-        emit(ServerMessageType.UserIDAssigned.value, {'user_id': user_id}, room=user_id)
+        emit(ServerMessageType.UserIDAssigned.value, {ServerDataKey.UserID.value: user_id}, room=user_id)
 
 
 def handle_disconnect(reason:str, user_id:str):
@@ -265,8 +265,9 @@ def handle_set_userinfo(user_id:str, username:str, avatar_url:str):
         UserKey.Username.value: username,
         UserKey.AvatarURL.value: avatar_url,
     })
-
+    print(f"用户{user_id}设置用户名{username}，头像URL{avatar_url}")
     emit(ServerMessageType.UserInfoUpdated.value, {
+        ServerDataKey.UserID.value: user_id,
         ServerDataKey.Username.value: username,
         ServerDataKey.AvatarURL.value: avatar_url
     })
@@ -798,32 +799,6 @@ def handle_continue_game(user_id:str, room_id:str, continue_game:bool):
     broadcast_game_info(room_id)
 
     check_for_new_game(room_id)
-
-
-def handle_set_avatar(user_id:str, avatar_url:str):
-    """
-    处理设置头像事件
-    """
-    
-    if not user_id:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户未登录"})
-        return
-    if not avatar_url:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "头像URL不能为空"})
-        return
-
-        
-    # 更新玩家头像
-    user_info = get_user_info(user_id)
-    if not user_info:
-        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户不存在"})
-        return
-    
-    # 更新用户头像
-    user_info[UserKey.AvatarURL.value] = avatar_url
-    #set_user_info(user_id, user_info)
-
-    emit(ServerMessageType.AvatarSet.value, {ServerDataKey.UserID.value: user_id, ServerDataKey.AvatarURL.value: avatar_url})
 
 
 def allowed_file(filename):

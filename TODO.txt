@@ -15,3 +15,22 @@ room_manager.py中好多方法都是要根据room_id, player_id先找到player�
 RoomKey中的ReadyPlayers、LastSeatTime、GameData、ContinueGameData是否可以移除？
 比牌的时候要考虑谁先比牌的因素，如果一样大，谁先比，谁输
 游戏开始后，房间游戏状态为playing，玩家的状态也为playing
+
+
+预览html文件的方法： 
+1、cd e:\cs\拖拉机纸牌游戏\backend; python -m http.server 8000 
+2、http://localhost:8000/templates/lobby.html
+
+## 事件名和消息类型的区别
+在Socket.IO中， 事件名 和 消息类型 是两个不同的概念：
+
+1. 事件名（Event Names） ：
+   
+   - Socket.IO内置的标准事件，如'connect'、'disconnect'、'connect_error'等
+   - 这些事件由Socket.IO库自动触发，不需要手动发送
+   - 例如客户端的 socket.on('connect', ...) 监听的是Socket.IO连接建立事件
+2. 消息类型（Message Types） ：
+   
+   - 应用自定义的消息标识，用于区分不同业务逻辑的通信
+   - 需要通过 socket.emit() 手动发送，另一端通过 socket.on() 监听
+   - 例如游戏中的'user_id_assigned'、'room_created'等

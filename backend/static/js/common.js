@@ -102,6 +102,11 @@ function saveUserId(userId) {
 //#endregion 用户信息本次存储相关结束
 
 //#region socketio 连接相关
+let errorHandlerList = [];
+function registerErrorHandler(onErrorCallback) {
+    errorHandlerList.push(onErrorCallback);
+}
+
 /**
  * 初始化Socket连接
  * @param {string} serverUrl - 服务器URL
@@ -155,6 +160,17 @@ function initSocketConnection(serverUrl = '/', options = {},
                     console.error('连接错误回调函数执行时发生错误:', error);
                 }
             }
+        });
+
+        socket.on(ServerMessageType.Error, function (error) {
+            console.error('服务器返回错误信息:', error.message || error);
+            errorHandlerList.forEach(handler => {
+                try {
+                    handler(error);
+                } catch (error) {
+                    console.error('错误处理回调函数执行时发生错误:', error);
+                }
+            });
         });
 
         // 定时检查socket连接

@@ -113,6 +113,7 @@ const ServerDataKey = {
     MaxRounds: 'max_rounds',  // 手数封顶数
     MaxPotAmount: 'max_pot_amount',  // 当局底池最大数额
     MaxPlayerNumber: 'max_player_number',  // 房主设置的房间最大人数
+    ErrorCode: 'error_code',  // 错误码，类型：int
 };
 
 // 挂载到window对象，使其在全局范围内可用

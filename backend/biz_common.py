@@ -7,7 +7,7 @@ import time
 
 from biz_utils import add_game_log, common_check
 from game_logic import compare_hands, create_deck, deal_cards, shuffle_deck
-from dao_user import get_user_info, set_user_info
+from dao_user import delete_user_info, get_user_info, set_user_info
 from game_enums import (GameStatus, PlayerKey, PlayerStatus, RoomSettingKey, RoomKey,
     RoomStatus, OnlineStatus, UserKey
 )
@@ -167,6 +167,7 @@ def handle_disconnect(reason:str, user_id:str):
             print(f"用户{user_id}在房间{room_id}中，主动断开连接")
             # 添加离开房间的日志
             add_game_log(room_id, f"{user_id} 主动离开，已移出房间{room_id}")
+        delete_user_info(user_id)
     else: # 网络原因导致断线，加入重连倒计时
         if room_id:
             update_player_online_status(room_id, user_id, OnlineStatus.LostConnection)
@@ -214,7 +215,11 @@ def _join_room(room_id, user_id, reconnect=False)->tuple:
         # 向该玩家推送历史状态
         emit(ServerMessageType.ReconnectRestore.value, get_room_info(room_id, user_id), room=user_id)
     else:
-        join_room_dao(room_id, user_id)
+        # 获取用户信息，包括username和avatar
+        user_info = get_user_info(user_id)
+        username = user_info.get(UserKey.Username.value, "") if user_info else ""
+        avatar = user_info.get(UserKey.AvatarURL.value, "") if user_info else ""
+        join_room_dao(room_id, user_id, username, avatar)
         add_game_log(room_id, f"玩家 {user_id} 加入房间")
         emit(ServerMessageType.RoomJoined.value, {
             ServerDataKey.RoomID.value: room_id,
@@ -307,7 +312,11 @@ def handle_create_room(user_id: str, room_name: str = ""):
     if not user_id:
         emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: "用户ID不能为空"})
         return
-        
+    
+    if get_user_info(user_id) is None:
+        emit(ServerMessageType.Error.value, {ServerDataKey.Message.value: f"用户{user_id}不存在"})
+        return
+
     # 检查玩家是否已在房间中
     existing_room_id = get_room_by_player_id(user_id)
     if existing_room_id:

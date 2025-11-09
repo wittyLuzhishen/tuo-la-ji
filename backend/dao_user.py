@@ -12,3 +12,9 @@ def set_user_info(user_id: str, user_info: dict):
     设置用户信息
     """
     users[user_id] = user_info
+
+def delete_user_info(user_id: str):
+    """
+    删除用户信息
+    """
+    users.pop(user_id, None)

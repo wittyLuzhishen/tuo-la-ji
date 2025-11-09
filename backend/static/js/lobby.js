@@ -19,6 +19,11 @@ const ID_CANCEL_USER_INFO_UPDATE_BTN = "cancel-user-setup";
 const ID_USERNAME_ERROR = "username-error";
 const ID_USERNAME_DISPLAY = "username-display";
 const ID_REFRESH_ROOM_LIST_BTN = "refresh-room-list-btn";
+const ID_CREATE_ROOM_BTN = "create-room-btn";
+const ID_CREATE_ROOM_MODAL = "create-room-modal";
+const ID_NEW_ROOM_NAME = "new-room-name";
+const ID_CONFIRM_CREATE_ROOM_BTN = "confirm-create-room-btn";
+const ID_CANCEL_CREATE_ROOM_BTN = "cancel-create-room-btn";
 
 
 const GAME_STATUS_PLAYING = 'playing';
@@ -75,6 +80,10 @@ window.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    registerErrorHandler(function (error) {
+        console.error("大厅Socket错误:", error);
+        // 可以添加具体的错误处理逻辑，如显示错误提示
+    });
 });
 
 
@@ -146,6 +155,32 @@ function setupLobbySocketListeners(socket) {
                 updateRoomList(roomList);
             } catch (error) {
                 console.warn("处理房间列表更新事件时发生错误:", error);
+            }
+        },
+
+        [ServerMessageType.RoomCreated]: function (data) {
+            try {
+                console.log("房间创建成功:", data);
+                
+                // 隐藏等待提示
+                hideToast();
+                
+                // 显示成功提示
+                showToast("成功", "房间创建成功");
+                
+                // 获取房间ID
+                const roomId = data[ServerDataKey.RoomID];
+                
+                if (roomId) {
+                    // 跳转到房间页面
+                    window.location.href = `/room/${roomId}`;
+                } else {
+                    console.error("房间创建成功响应中缺少房间ID");
+                    showToast("错误", "房间创建响应数据异常");
+                }
+            } catch (error) {
+                console.error("处理房间创建成功事件时发生错误:", error);
+                showToast("错误", "处理房间创建响应时发生错误");
             }
         },
 
@@ -367,7 +402,7 @@ function requestRoomList(showLoading = true) {
         }
 
         // 发送请求房间列表的消息到服务器
-        socket.emit(ClientMessageType.GetRoomList, {});
+        socket.emit(ClientMessageType.GetRoomList);
 
         return true;
     } catch (error) {
@@ -423,7 +458,7 @@ function updateRoomList(roomList) {
 
         // 创建玩家数量单元格
         const playerCountCell = document.createElement("td");
-        const currentPlayers = room[ServerDataKey.PlayerNumber] || 0;
+        const currentPlayers = room[ServerDataKey.PlayerCount] || 0;
         const maxPlayers = room[ServerDataKey.Settings][ServerDataKey.MaxPlayerNumber] || 6;
         playerCountCell.textContent = `${currentPlayers}/${maxPlayers}`;
         row.appendChild(playerCountCell);
@@ -470,6 +505,9 @@ function updateRoomList(roomList) {
  * 加入房间函数
  * @param {string} roomId - 要加入的房间ID
  */
+/**
+ * 注册按钮事件
+ */
 function registerButtonEvents() {
     console.log("注册按钮事件");
 
@@ -479,6 +517,35 @@ function registerButtonEvents() {
         refreshRoomListBtn.addEventListener("click", function () {
             console.log("点击了刷新房间列表按钮");
             requestRoomList(true);
+        });
+    }
+
+    // 创建房间按钮事件
+    const createRoomBtn = document.getElementById(ID_CREATE_ROOM_BTN);
+    if (createRoomBtn) {
+        createRoomBtn.addEventListener("click", function () {
+            console.log("点击了创建房间按钮");
+            // 显示创建房间模态框
+            showModal(ID_CREATE_ROOM_MODAL);
+        });
+    }
+
+    // 确认创建房间按钮事件
+    const confirmCreateRoomBtn = document.getElementById(ID_CONFIRM_CREATE_ROOM_BTN);
+    if (confirmCreateRoomBtn) {
+        confirmCreateRoomBtn.addEventListener("click", function () {
+            console.log("点击了确认创建房间按钮");
+            onCreateRoomBtnClicked();
+        });
+    }
+
+    // 取消创建房间按钮事件
+    const cancelCreateRoomBtn = document.getElementById(ID_CANCEL_CREATE_ROOM_BTN);
+    if (cancelCreateRoomBtn) {
+        cancelCreateRoomBtn.addEventListener("click", function () {
+            console.log("点击了取消创建房间按钮");
+            // 隐藏创建房间模态框
+            hideModal(ID_CREATE_ROOM_MODAL);
         });
     }
 }
@@ -513,5 +580,57 @@ function joinRoom(roomId) {
     } catch (error) {
         console.error("加入房间时发生错误:", error);
         showToast("错误", "加入房间失败，请重试");
+    }
+}
+
+/**
+ * 确认创建房间按钮点击处理函数
+ */
+function onCreateRoomBtnClicked() {
+    console.log("确认创建房间");
+
+    try {
+        // 检查Socket连接状态
+        if (!socket || !socket.connected) {
+            showToast("错误", "网络连接已断开，请重新连接");
+            return;
+        }
+
+        // 获取房间名称
+        const roomNameInput = document.getElementById(ID_NEW_ROOM_NAME);
+        const roomName = roomNameInput ? roomNameInput.value.trim() : "";
+
+        // 简单验证房间名称
+        if (!roomName) {
+            showToast("错误", "请输入房间名称");
+            return;
+        }
+
+        // 获取当前用户信息
+        const currentUser = getCurrentUser();
+        if (!currentUser || !currentUser[ClientDataKey.UserID]) {
+            showToast("错误", "用户信息未设置，请先设置用户信息");
+            return;
+        }
+
+        // 发送创建房间的消息到服务器
+        socket.emit(ClientMessageType.CreateRoom, {
+            [ClientDataKey.RoomName]: roomName,
+            [ClientDataKey.UserID]: currentUser[ClientDataKey.UserID]
+        });
+
+        // 显示等待提示
+        showToast("提示", "正在创建房间，请稍候...");
+
+        // 隐藏创建房间模态框
+        hideModal(ID_CREATE_ROOM_MODAL);
+
+        // 清空输入框
+        if (roomNameInput) {
+            roomNameInput.value = "";
+        }
+    } catch (error) {
+        console.error("创建房间时发生错误:", error);
+        showToast("错误", "创建房间失败，请重试");
     }
 }

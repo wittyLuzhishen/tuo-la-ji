@@ -125,7 +125,7 @@ def get_room_list():
     
     客户端请求获取所有可用的游戏房间列表
     """
-    logger.debug("请求获取房间列表")
+    logger.info("请求获取房间列表")
     handle_get_room_list()
 
 

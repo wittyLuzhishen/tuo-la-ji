@@ -114,5 +114,17 @@ class ServerDataKey(Enum):
     MaxRounds = "max_rounds"  # 手数封顶数
     MaxPotAmount = "max_pot_amount"  # 当局底池最大数额
     MaxPlayerNumber = "max_player_number"  # 房主设置的房间最大人数
+    ErrorCode = "error_code"  # 错误码，类型：int
+
+
+class ErrorCode(Enum):
+    """错误码枚举"""
+    Success = "0"  # 成功
+    InvalidUserId = "invalid_user_id"  # 无效用户ID
+    InvalidRoomId = "invalid_room_id"  # 无效房间ID
+    AlreadyInRoom = "already_in_room"  # 玩家已在房间中
+    CreateRoomFailed = "create_room_failed"  # 创建房间失败
+    InvalidSeatIndex = "invalid_seat_index"  # 无效座位索引
+    UnexceptedPlayerStatus = "unexcepted_player_status"  # 玩家状态异常
 
 
